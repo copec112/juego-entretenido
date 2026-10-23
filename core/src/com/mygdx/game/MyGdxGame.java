@@ -20,6 +20,7 @@ public class MyGdxGame extends ApplicationAdapter {
     private OrthographicCamera camera;
 	private SpriteBatch batch;	   
 	private BitmapFont font;
+	private BitmapFont fontBloques; 
 	private ShapeRenderer shape;
 	private PingBall ball;
 	private Paddle pad;
@@ -33,6 +34,7 @@ public class MyGdxGame extends ApplicationAdapter {
 		    batch = new SpriteBatch();
 		    font = new BitmapFont();
 		    font.getData().setScale(3, 2);
+		    fontBloques = new BitmapFont();
 		    estado = GameState.getInstance();
 		    estado.reiniciar();
 		    crearBloques(2+estado.getNivel());
@@ -53,6 +55,8 @@ public class MyGdxGame extends ApplicationAdapter {
 			//dibujar textos
 			font.draw(batch, "Puntos: " + estado.getPuntaje(), 10, 25);
 			font.draw(batch, "Vidas : " + estado.getVidas(), Gdx.graphics.getWidth()-220, 25);
+			// numeros de los bloques
+			blocks.drawValores(batch, fontBloques);
 			batch.end();
 		}	
 		

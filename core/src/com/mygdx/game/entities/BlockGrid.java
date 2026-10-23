@@ -2,8 +2,12 @@ package com.mygdx.game.entities;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 
 /**
@@ -24,6 +28,8 @@ public class BlockGrid {
     private final int filas;
     private final int columnas;
     private int restantes;
+    private final Random random = new Random();
+    private final GlyphLayout layout = new GlyphLayout(); // para centrar los numeros
 
     public BlockGrid(int filas, int columnas) {
         this.filas = filas;
@@ -35,10 +41,15 @@ public class BlockGrid {
             int y = altoPantalla - (f + 1) * (BLOCK_HEIGHT + SEPARACION);
             for (int c = 0; c < columnas; c++) {
                 int x = MARGEN_X + c * (BLOCK_WIDTH + SEPARACION);
-                celdas[f][c] = new Block(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
+                celdas[f][c] = new Block(x, y, BLOCK_WIDTH, BLOCK_HEIGHT, valorInicial());
                 restantes++;
             }
         }
+    }
+
+    /** Los bloques nuevos parten con 2 o 4 (50% cada uno). */
+    private int valorInicial() {
+        return random.nextBoolean() ? 2 : 4;
     }
 
     public int getFilas() { return filas; }
@@ -75,6 +86,21 @@ public class BlockGrid {
         }
     }
 
+    /** Dibuja el numero de cada bloque, centrado. Se llama con el SpriteBatch abierto. */
+    public void drawValores(SpriteBatch batch, BitmapFont font) {
+        for (int f = 0; f < filas; f++) {
+            for (int c = 0; c < columnas; c++) {
+                Block b = celdas[f][c];
+                if (b == null) continue;
+                font.setColor(b.getColorTexto());
+                layout.setText(font, String.valueOf(b.getValor()));
+                float tx = b.getX() + (b.getWidth() - layout.width) / 2;
+                float ty = b.getY() + (b.getHeight() + layout.height) / 2;
+                font.draw(batch, layout, tx, ty);
+            }
+        }
+    }
+
     public void checkCollision(PingBall ball) {
         for (int f = 0; f < filas; f++) {
             for (int c = 0; c < columnas; c++) {
@@ -85,19 +111,19 @@ public class BlockGrid {
         }
     }
 
-    /** Saca de la grilla los bloques destruidos y devuelve cuantos eran. */
+    /** Saca de la grilla los bloques destruidos y devuelve los puntos que dan (la suma de sus valores). */
     public int eliminarDestruidos() {
-        int eliminados = 0;
+        int puntos = 0;
         for (int f = 0; f < filas; f++) {
             for (int c = 0; c < columnas; c++) {
                 if (celdas[f][c] != null && celdas[f][c].isDestroyed()) {
+                    puntos += celdas[f][c].getValor();
                     celdas[f][c] = null;
                     restantes--;
-                    eliminados++;
                 }
             }
         }
-        return eliminados;
+        return puntos;
     }
 
     public boolean estaVacia() {
