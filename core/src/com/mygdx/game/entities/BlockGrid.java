@@ -1,6 +1,7 @@
 package com.mygdx.game.entities;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -32,21 +33,31 @@ public class BlockGrid {
     private final GlyphLayout layout = new GlyphLayout(); // para centrar los numeros
 
     /**
-     * @param filas        filas totales de la matriz
-     * @param columnas     columnas totales de la matriz
-     * @param filasLlenas  cuantas filas (desde arriba) parten con bloques; el resto queda
-     *                     vacio para que los bloques tengan donde moverse
+     * La matriz parte casi vacia: se ponen "bloquesIniciales" bloques (2 o 4) en
+     * celdas elegidas al azar, solo dentro de las primeras "filasIniciales" filas
+     * (las de arriba), para que abajo quede espacio libre por donde moverlos.
+     *
+     * @param filas            filas totales de la matriz
+     * @param columnas         columnas totales de la matriz
+     * @param bloquesIniciales cuantos bloques parten en la matriz
+     * @param filasIniciales   en cuantas filas (desde arriba) pueden aparecer al inicio
      */
-    public BlockGrid(int filas, int columnas, int filasLlenas) {
+    public BlockGrid(int filas, int columnas, int bloquesIniciales, int filasIniciales) {
         this.filas = filas;
         this.columnas = columnas;
         this.celdas = new Block[filas][columnas];
 
-        for (int f = 0; f < filasLlenas && f < filas; f++) {
+        List<int[]> candidatas = new ArrayList<int[]>();
+        for (int f = 0; f < filasIniciales && f < filas; f++) {
             for (int c = 0; c < columnas; c++) {
-                celdas[f][c] = crearBloque(f, c);
-                restantes++;
+                candidatas.add(new int[] { f, c });
             }
+        }
+        Collections.shuffle(candidatas, random);
+        for (int i = 0; i < bloquesIniciales && i < candidatas.size(); i++) {
+            int[] celda = candidatas.get(i);
+            celdas[celda[0]][celda[1]] = crearBloque(celda[0], celda[1]);
+            restantes++;
         }
     }
 
@@ -102,10 +113,10 @@ public class BlockGrid {
      * fusiona como maximo una vez por movimiento). Si el movimiento cambio algo,
      * aparece un bloque nuevo (2 o 4) en una celda vacia al azar.
      *
-     * @return puntos ganados por las fusiones (el valor de cada bloque resultante)
+     * Fusionar NO da puntos: el puntaje solo sube cuando la pelota rompe un
+     * bloque (ver eliminarDestruidos()).
      */
-    public int mover(Direccion dir) {
-        int puntos = eliminarDestruidos(); // la matriz debe estar al dia antes de mover
+    public void mover(Direccion dir) {
         boolean cambio = false;
 
         boolean vertical = (dir == Direccion.ARRIBA || dir == Direccion.ABAJO);
@@ -129,7 +140,6 @@ public class BlockGrid {
                 Block b = lista.get(i);
                 if (i + 1 < lista.size() && lista.get(i + 1).getValor() == b.getValor()) {
                     b.setValor(b.getValor() * 2);
-                    puntos += b.getValor();
                     restantes--;
                     cambio = true;
                     i += 2;
@@ -153,7 +163,6 @@ public class BlockGrid {
         if (cambio) {
             agregarBloqueNuevo();
         }
-        return puntos;
     }
 
     /** Celda numero i de la linea l, contando desde el borde hacia el que se mueve. */

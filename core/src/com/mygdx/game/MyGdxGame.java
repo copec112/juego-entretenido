@@ -18,6 +18,8 @@ import com.mygdx.game.managers.GameState;
 public class MyGdxGame extends ApplicationAdapter {
 	private static final int COLUMNAS = 10;
 	private static final int FILAS_GRILLA = 7; // filas totales de la matriz de bloques
+	private static final int BLOQUES_INICIALES = 8; // bloques con que parte el nivel 1
+	private static final int MAX_BLOQUES_INICIALES = 30;
 
     private OrthographicCamera camera;
 	private SpriteBatch batch;	   
@@ -39,15 +41,20 @@ public class MyGdxGame extends ApplicationAdapter {
 		    fontBloques = new BitmapFont();
 		    estado = GameState.getInstance();
 		    estado.reiniciar();
-		    crearBloques(2+estado.getNivel());
+		    crearBloques();
 			
 		    shape = new ShapeRenderer();
 		    ball = new PingBall(Gdx.graphics.getWidth()/2-10, 41, 10, 5, 7, true);
 		    pad = new Paddle(Gdx.graphics.getWidth()/2-50,40,100,10);
 		}
-		/** Crea la matriz de bloques; deja siempre 2 filas vacias abajo para poder moverlos. */
-		public void crearBloques(int filasLlenas) {
-			blocks = new BlockGrid(FILAS_GRILLA, COLUMNAS, Math.min(filasLlenas, FILAS_GRILLA - 2));
+		/**
+		 * Crea la matriz de bloques del nivel actual: parte casi vacia, con pocos bloques
+		 * al azar (8 en el nivel 1, 2 mas por cada nivel). Las 2 filas de abajo quedan
+		 * libres para poder mover los bloques.
+		 */
+		public void crearBloques() {
+			int cantidad = Math.min(BLOQUES_INICIALES + 2 * (estado.getNivel() - 1), MAX_BLOQUES_INICIALES);
+			blocks = new BlockGrid(FILAS_GRILLA, COLUMNAS, cantidad, FILAS_GRILLA - 2);
 		}
 
 		/** W, A, S, D mueven los bloques (estilo 2048); cada movimiento valido agrega un bloque nuevo. */
@@ -58,7 +65,8 @@ public class MyGdxGame extends ApplicationAdapter {
 			else if (Gdx.input.isKeyJustPressed(Input.Keys.A)) dir = Direccion.IZQUIERDA;
 			else if (Gdx.input.isKeyJustPressed(Input.Keys.D)) dir = Direccion.DERECHA;
 			if (dir != null) {
-				estado.sumarPuntos(blocks.mover(dir));
+				// fusionar bloques NO da puntos: el puntaje sube solo al romper bloques con la pelota
+				blocks.mover(dir);
 			}
 		}
 		public void dibujaTextos() {
@@ -93,13 +101,13 @@ public class MyGdxGame extends ApplicationAdapter {
 	        // verificar game over
 	        if (estado.getVidas()<=0) {
 	        	estado.reiniciar(); // game over: vuelve todo a cero (puntaje, vidas y nivel)
-	        	crearBloques(2+estado.getNivel());
+	        	crearBloques();
 	        	//ball = new PingBall(pad.getX()+pad.getWidth()/2-5, pad.getY()+pad.getHeight()+11, 10, 5, 7, true);	        	
 	        }
 	        // verificar si el nivel se terminó
 	        if (blocks.estaVacia()) {
 	        	estado.subirNivel();
-	        	crearBloques(2+estado.getNivel());
+	        	crearBloques();
 	        	ball = new PingBall(pad.getX()+pad.getWidth()/2-5, pad.getY()+pad.getHeight()+11, 10, 5, 7, true);
 	        }    	
 	        // teclas W, A, S, D: mover los bloques
