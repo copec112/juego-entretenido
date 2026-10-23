@@ -1,7 +1,5 @@
 package com.mygdx.game;
 
-import java.util.ArrayList;
-
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -10,20 +8,22 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.mygdx.game.entities.Block;
+import com.mygdx.game.entities.BlockGrid;
 import com.mygdx.game.entities.Paddle;
 import com.mygdx.game.entities.PingBall;
 import com.mygdx.game.managers.GameState;
 
 
 public class MyGdxGame extends ApplicationAdapter {
+	private static final int COLUMNAS = 10;
+
     private OrthographicCamera camera;
 	private SpriteBatch batch;	   
 	private BitmapFont font;
 	private ShapeRenderer shape;
 	private PingBall ball;
 	private Paddle pad;
-	private ArrayList<Block> blocks = new ArrayList<>();
+	private BlockGrid blocks;
 	private GameState estado;
     
 		@Override
@@ -42,16 +42,7 @@ public class MyGdxGame extends ApplicationAdapter {
 		    pad = new Paddle(Gdx.graphics.getWidth()/2-50,40,100,10);
 		}
 		public void crearBloques(int filas) {
-			blocks.clear();
-			int blockWidth = 70;
-		    int blockHeight = 26;
-		    int y = Gdx.graphics.getHeight();
-		    for (int cont = 0; cont<filas; cont++ ) {
-		    	y -= blockHeight+10;
-		    	for (int x = 5; x < Gdx.graphics.getWidth(); x += blockWidth + 10) {
-		            blocks.add(new Block(x, y, blockWidth, blockHeight));
-		        }
-		    }
+			blocks = new BlockGrid(filas, COLUMNAS);
 		}
 		public void dibujaTextos() {
 			//actualizar matrices de la cámara
@@ -61,7 +52,7 @@ public class MyGdxGame extends ApplicationAdapter {
 			batch.begin();
 			//dibujar textos
 			font.draw(batch, "Puntos: " + estado.getPuntaje(), 10, 25);
-			font.draw(batch, "Vidas : " + estado.getVidas(), Gdx.graphics.getWidth()-20, 25);
+			font.draw(batch, "Vidas : " + estado.getVidas(), Gdx.graphics.getWidth()-220, 25);
 			batch.end();
 		}	
 		
@@ -87,25 +78,16 @@ public class MyGdxGame extends ApplicationAdapter {
 	        	//ball = new PingBall(pad.getX()+pad.getWidth()/2-5, pad.getY()+pad.getHeight()+11, 10, 5, 7, true);	        	
 	        }
 	        // verificar si el nivel se terminó
-	        if (blocks.size()==0) {
+	        if (blocks.estaVacia()) {
 	        	estado.subirNivel();
 	        	crearBloques(2+estado.getNivel());
 	        	ball = new PingBall(pad.getX()+pad.getWidth()/2-5, pad.getY()+pad.getHeight()+11, 10, 5, 7, true);
 	        }    	
-	        //dibujar bloques
-	        for (Block b : blocks) {        	
-	            b.draw(shape);
-	            ball.checkCollision(b);
-	        }
-	        // actualizar estado de los bloques 
-	        for (int i = 0; i < blocks.size(); i++) {
-	            Block b = blocks.get(i);
-	            if (b.isDestroyed()) {
-	            	estado.sumarPuntos(1);
-	                blocks.remove(b);
-	                i--; //para no saltarse 1 tras eliminar del arraylist
-	            }
-	        }
+	        //dibujar bloques y revisar colisiones de la pelota
+	        blocks.draw(shape);
+	        blocks.checkCollision(ball);
+	        // sacar los bloques destruidos y sumar 1 punto por cada uno
+	        estado.sumarPuntos(blocks.eliminarDestruidos());
 	        
 	        ball.checkCollision(pad);
 	        ball.draw(shape);
