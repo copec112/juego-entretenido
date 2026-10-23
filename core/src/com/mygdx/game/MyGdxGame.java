@@ -82,7 +82,7 @@ public class MyGdxGame extends ApplicationAdapter {
 	        }
 	        // verificar game over
 	        if (estado.getVidas()<=0) {
-	        	estado.reiniciarVidasYNivel();
+	        	estado.reiniciar(); // game over: vuelve todo a cero (puntaje, vidas y nivel)
 	        	crearBloques(2+estado.getNivel());
 	        	//ball = new PingBall(pad.getX()+pad.getWidth()/2-5, pad.getY()+pad.getHeight()+11, 10, 5, 7, true);	        	
 	        }

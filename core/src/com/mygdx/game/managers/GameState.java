@@ -37,12 +37,6 @@ public class GameState {
         nivel = 1;
     }
 
-    /** Game over: vuelve a vidas y nivel iniciales (el puntaje se mantiene). */
-    public void reiniciarVidasYNivel() {
-        vidas = VIDAS_INICIALES;
-        nivel = 1;
-    }
-
     public int getPuntaje() { return puntaje; }
     public int getVidas() { return vidas; }
     public int getNivel() { return nivel; }
