@@ -5,10 +5,16 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 
-public class Paddle extends GameObject {
+public class Paddle extends GameObject implements Collidable {
 
     public Paddle(int x, int y, int ancho, int alto) {
         super(x, y, ancho, alto);
+    }
+
+    @Override
+    public void onCollision(PingBall ball) {
+        ball.setColor(Color.GREEN);
+        ball.rebotarVertical();
     }
 
     @Override

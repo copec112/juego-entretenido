@@ -35,6 +35,7 @@ public class PingBall extends GameObject {
 	    }
 	    
 	    public void update() {
+	    	color = Color.WHITE; // vuelve a blanco; Paddle lo pone verde al chocar
 	    	if (estaQuieto) return;
 	        setXY(getX() + xSpeed, getY() + ySpeed);
 	        if (getX()-size < 0 || getX()+size > Gdx.graphics.getWidth()) {
@@ -45,33 +46,26 @@ public class PingBall extends GameObject {
 	        }
 	    }
 	    
-	    public void checkCollision(Paddle paddle) {
-	        if(collidesWith(paddle)){
-	            color = Color.GREEN;
-	            ySpeed = -ySpeed;
-	        }
-	        else{
-	            color = Color.WHITE;
+	    /** Invierte la direccion vertical (rebote contra paddle o bloque). */
+	    public void rebotarVertical() {
+	    	ySpeed = -ySpeed;
+	    }
+
+	    public void setColor(Color color) {
+	    	this.color = color;
+	    }
+
+	    /** Si choca con el objeto, este decide como reaccionar. */
+	    public void checkCollision(Collidable obj) {
+	        if (collidesWith(obj)) {
+	            obj.onCollision(this);
 	        }
 	    }
-	    private boolean collidesWith(Paddle pp) {
 
-	    	boolean intersectaX = (pp.getX() + pp.getWidth() >= getX()-size) && (pp.getX() <= getX()+size);
-	        boolean intersectaY = (pp.getY() + pp.getHeight() >= getY()-size) && (pp.getY() <= getY()+size);		
+	    private boolean collidesWith(Collidable obj) {
+	    	boolean intersectaX = (obj.getX() + obj.getWidth() >= getX()-size) && (obj.getX() <= getX()+size);
+	        boolean intersectaY = (obj.getY() + obj.getHeight() >= getY()-size) && (obj.getY() <= getY()+size);
 	    	return intersectaX && intersectaY;
 	    }
-	    
-	    public void checkCollision(Block block) {
-	        if(collidesWith(block)){
-	            ySpeed = - ySpeed;
-	            block.destroy();
-	        }
-	    }
-	    private boolean collidesWith(Block bb) {
 
-	    	boolean intersectaX = (bb.getX() + bb.getWidth() >= getX()-size) && (bb.getX() <= getX()+size);
-	        boolean intersectaY = (bb.getY() + bb.getHeight() >= getY()-size) && (bb.getY() <= getY()+size);		
-	    	return intersectaX && intersectaY;
-	    }
-	    
 	}

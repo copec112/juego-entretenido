@@ -5,7 +5,7 @@ import java.util.Random;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 
-public class Block extends GameObject {
+public class Block extends GameObject implements Collidable {
     private Color cc;
     private boolean destroyed;
 
@@ -22,6 +22,12 @@ public class Block extends GameObject {
 
     public void destroy() {
         destroyed = true;
+    }
+
+    @Override
+    public void onCollision(PingBall ball) {
+        ball.rebotarVertical();
+        destroy();
     }
 
     @Override
