@@ -27,9 +27,9 @@ public class Block extends GameObject implements Collidable {
         this.color = colorPorValor(valor);
     }
 
-    /** Color del numero: oscuro sobre los bloques claros (2 y 4), blanco en el resto. */
+    /** Color del numero: oscuro sobre los bloques claros (2, 4, 8 y 2048), blanco en el resto. */
     public Color getColorTexto() {
-        return valor <= 4 ? Color.DARK_GRAY : Color.WHITE;
+        return (valor <= 8 || valor >= 2048) ? Color.DARK_GRAY : Color.WHITE;
     }
 
     public boolean isDestroyed() {
@@ -42,7 +42,7 @@ public class Block extends GameObject implements Collidable {
 
     @Override
     public void onCollision(PingBall ball) {
-        ball.rebotarVertical();
+        ball.rebotarContra(this);
         destroy();
     }
 
@@ -52,20 +52,20 @@ public class Block extends GameObject implements Collidable {
         shape.rect(getX(), getY(), getWidth(), getHeight());
     }
 
-    // Paleta parecida a la del 2048 original
+    // Paleta con colores bien distintos entre si
     private static Color colorPorValor(int valor) {
         switch (valor) {
-            case 2:    return rgb(0xEEE4DA);
-            case 4:    return rgb(0xEDE0C8);
-            case 8:    return rgb(0xF2B179);
-            case 16:   return rgb(0xF59563);
-            case 32:   return rgb(0xF67C5F);
-            case 64:   return rgb(0xF65E3B);
-            case 128:  return rgb(0xEDCF72);
-            case 256:  return rgb(0xEDCC61);
-            case 512:  return rgb(0xEDC850);
-            case 1024: return rgb(0xEDC53F);
-            default:   return rgb(0xEDC22E); // 2048 o mas
+            case 2:    return rgb(0x4FC3F7); // celeste
+            case 4:    return rgb(0x66BB6A); // verde
+            case 8:    return rgb(0xFFEE58); // amarillo
+            case 16:   return rgb(0xFFA726); // naranjo
+            case 32:   return rgb(0xEF5350); // rojo
+            case 64:   return rgb(0xAB47BC); // morado
+            case 128:  return rgb(0x3F51B5); // azul
+            case 256:  return rgb(0x00897B); // turquesa
+            case 512:  return rgb(0xEC407A); // rosado
+            case 1024: return rgb(0x6D4C41); // cafe
+            default:   return rgb(0xFFD700); // 2048 o mas: dorado
         }
     }
 

@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.mygdx.game.entities.BlockGrid;
+import com.mygdx.game.entities.Direccion;
 import com.mygdx.game.entities.Paddle;
 import com.mygdx.game.entities.PingBall;
 import com.mygdx.game.managers.GameState;
@@ -16,11 +17,12 @@ import com.mygdx.game.managers.GameState;
 
 public class MyGdxGame extends ApplicationAdapter {
 	private static final int COLUMNAS = 10;
+	private static final int FILAS_GRILLA = 7; // filas totales de la matriz de bloques
 
     private OrthographicCamera camera;
 	private SpriteBatch batch;	   
 	private BitmapFont font;
-	private BitmapFont fontBloques; 
+	private BitmapFont fontBloques; // fuente chica para los numeros de los bloques
 	private ShapeRenderer shape;
 	private PingBall ball;
 	private Paddle pad;
@@ -43,11 +45,24 @@ public class MyGdxGame extends ApplicationAdapter {
 		    ball = new PingBall(Gdx.graphics.getWidth()/2-10, 41, 10, 5, 7, true);
 		    pad = new Paddle(Gdx.graphics.getWidth()/2-50,40,100,10);
 		}
-		public void crearBloques(int filas) {
-			blocks = new BlockGrid(filas, COLUMNAS);
+		/** Crea la matriz de bloques; deja siempre 2 filas vacias abajo para poder moverlos. */
+		public void crearBloques(int filasLlenas) {
+			blocks = new BlockGrid(FILAS_GRILLA, COLUMNAS, Math.min(filasLlenas, FILAS_GRILLA - 2));
+		}
+
+		/** W, A, S, D mueven los bloques (estilo 2048); cada movimiento valido agrega un bloque nuevo. */
+		private void moverBloquesConTeclas() {
+			Direccion dir = null;
+			if (Gdx.input.isKeyJustPressed(Input.Keys.W)) dir = Direccion.ARRIBA;
+			else if (Gdx.input.isKeyJustPressed(Input.Keys.S)) dir = Direccion.ABAJO;
+			else if (Gdx.input.isKeyJustPressed(Input.Keys.A)) dir = Direccion.IZQUIERDA;
+			else if (Gdx.input.isKeyJustPressed(Input.Keys.D)) dir = Direccion.DERECHA;
+			if (dir != null) {
+				estado.sumarPuntos(blocks.mover(dir));
+			}
 		}
 		public void dibujaTextos() {
-			//actualizar matrices de la c√°mara
+			//actualizar matrices de la c·mara
 			camera.update();
 			//actualizar 
 			batch.setProjectionMatrix(camera.combined);
@@ -81,16 +96,18 @@ public class MyGdxGame extends ApplicationAdapter {
 	        	crearBloques(2+estado.getNivel());
 	        	//ball = new PingBall(pad.getX()+pad.getWidth()/2-5, pad.getY()+pad.getHeight()+11, 10, 5, 7, true);	        	
 	        }
-	        // verificar si el nivel se termin√≥
+	        // verificar si el nivel se terminÛ
 	        if (blocks.estaVacia()) {
 	        	estado.subirNivel();
 	        	crearBloques(2+estado.getNivel());
 	        	ball = new PingBall(pad.getX()+pad.getWidth()/2-5, pad.getY()+pad.getHeight()+11, 10, 5, 7, true);
 	        }    	
+	        // teclas W, A, S, D: mover los bloques
+	        moverBloquesConTeclas();
 	        //dibujar bloques y revisar colisiones de la pelota
 	        blocks.draw(shape);
 	        blocks.checkCollision(ball);
-	        // sacar los bloques destruidos y sumar 1 punto por cada uno
+	        // sacar los bloques destruidos y sumar su valor al puntaje
 	        estado.sumarPuntos(blocks.eliminarDestruidos());
 	        
 	        ball.checkCollision(pad);

@@ -11,12 +11,12 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 
 /**
- * Grilla (matriz) de bloques.
+ * Grilla (matriz) de bloques, al estilo del juego 2048.
  *
- * Cada bloque esta en celdas[fila][columna]; la fila 0 es la de arriba.
- * Un bloque destruido queda como null. Al tener posicion (fila, columna)
- * es facil saber quienes son los vecinos de un bloque (arriba, abajo,
- * izquierda, derecha), lo que se usara para las fusiones tipo 2048.
+ * Cada bloque esta en celdas[fila][columna] (la fila 0 es la de arriba) y
+ * una celda vacia es null. La posicion en pantalla de cada bloque se calcula
+ * siempre a partir de su celda, y mover(Direccion) desliza todos los bloques
+ * por la matriz fusionando los vecinos de igual valor.
  */
 public class BlockGrid {
     private static final int BLOCK_WIDTH = 70;
@@ -31,20 +31,27 @@ public class BlockGrid {
     private final Random random = new Random();
     private final GlyphLayout layout = new GlyphLayout(); // para centrar los numeros
 
-    public BlockGrid(int filas, int columnas) {
+    /**
+     * @param filas        filas totales de la matriz
+     * @param columnas     columnas totales de la matriz
+     * @param filasLlenas  cuantas filas (desde arriba) parten con bloques; el resto queda
+     *                     vacio para que los bloques tengan donde moverse
+     */
+    public BlockGrid(int filas, int columnas, int filasLlenas) {
         this.filas = filas;
         this.columnas = columnas;
         this.celdas = new Block[filas][columnas];
 
-        int altoPantalla = Gdx.graphics.getHeight();
-        for (int f = 0; f < filas; f++) {
-            int y = altoPantalla - (f + 1) * (BLOCK_HEIGHT + SEPARACION);
+        for (int f = 0; f < filasLlenas && f < filas; f++) {
             for (int c = 0; c < columnas; c++) {
-                int x = MARGEN_X + c * (BLOCK_WIDTH + SEPARACION);
-                celdas[f][c] = new Block(x, y, BLOCK_WIDTH, BLOCK_HEIGHT, valorInicial());
+                celdas[f][c] = crearBloque(f, c);
                 restantes++;
             }
         }
+    }
+
+    private Block crearBloque(int fila, int columna) {
+        return new Block(xCelda(columna), yCelda(fila), BLOCK_WIDTH, BLOCK_HEIGHT, valorInicial());
     }
 
     /** Los bloques nuevos parten con 2 o 4 (50% cada uno). */
@@ -52,10 +59,19 @@ public class BlockGrid {
         return random.nextBoolean() ? 2 : 4;
     }
 
+    // Posicion en pantalla de una celda
+    private int xCelda(int columna) {
+        return MARGEN_X + columna * (BLOCK_WIDTH + SEPARACION);
+    }
+
+    private int yCelda(int fila) {
+        return Gdx.graphics.getHeight() - (fila + 1) * (BLOCK_HEIGHT + SEPARACION);
+    }
+
     public int getFilas() { return filas; }
     public int getColumnas() { return columnas; }
 
-    /** Bloque en (fila, columna), o null si esta fuera de la grilla o ya fue destruido. */
+    /** Bloque en (fila, columna), o null si esta fuera de la grilla o la celda esta vacia. */
     public Block getBlock(int fila, int columna) {
         if (fila < 0 || fila >= filas || columna < 0 || columna >= columnas) {
             return null;
@@ -63,7 +79,7 @@ public class BlockGrid {
         return celdas[fila][columna];
     }
 
-    /** Vecinos (arriba, abajo, izquierda, derecha) que todavia existen. */
+    /** Vecinos (arriba, abajo, izquierda, derecha) que existen. */
     public List<Block> getVecinos(int fila, int columna) {
         List<Block> vecinos = new ArrayList<Block>();
         int[][] direcciones = { {-1, 0}, {1, 0}, {0, -1}, {0, 1} };
@@ -75,6 +91,122 @@ public class BlockGrid {
         }
         return vecinos;
     }
+
+    // ------------------------------------------------------------------
+    //  Movimiento estilo 2048
+    // ------------------------------------------------------------------
+
+    /**
+     * Desliza todos los bloques en la direccion dada: se pegan al borde y los
+     * vecinos de igual valor se fusionan en uno de valor doble (cada bloque se
+     * fusiona como maximo una vez por movimiento). Si el movimiento cambio algo,
+     * aparece un bloque nuevo (2 o 4) en una celda vacia al azar.
+     *
+     * @return puntos ganados por las fusiones (el valor de cada bloque resultante)
+     */
+    public int mover(Direccion dir) {
+        int puntos = eliminarDestruidos(); // la matriz debe estar al dia antes de mover
+        boolean cambio = false;
+
+        boolean vertical = (dir == Direccion.ARRIBA || dir == Direccion.ABAJO);
+        int lineas = vertical ? columnas : filas;   // filas o columnas a procesar
+        int largo = vertical ? filas : columnas;    // celdas por linea
+
+        for (int l = 0; l < lineas; l++) {
+            // 1) bloques de la linea, ordenados desde el borde hacia el que se mueven
+            List<Block> lista = new ArrayList<Block>();
+            for (int i = 0; i < largo; i++) {
+                Block b = getEnLinea(dir, l, i);
+                if (b != null) {
+                    lista.add(b);
+                }
+            }
+
+            // 2) fusionar vecinos iguales
+            List<Block> resultado = new ArrayList<Block>();
+            int i = 0;
+            while (i < lista.size()) {
+                Block b = lista.get(i);
+                if (i + 1 < lista.size() && lista.get(i + 1).getValor() == b.getValor()) {
+                    b.setValor(b.getValor() * 2);
+                    puntos += b.getValor();
+                    restantes--;
+                    cambio = true;
+                    i += 2;
+                } else {
+                    i++;
+                }
+                resultado.add(b);
+            }
+
+            // 3) volver a poner la linea en la matriz, pegada al borde
+            for (int j = 0; j < largo; j++) {
+                Block nuevo = (j < resultado.size()) ? resultado.get(j) : null;
+                if (getEnLinea(dir, l, j) != nuevo) {
+                    cambio = true;
+                }
+                setEnLinea(dir, l, j, nuevo);
+            }
+        }
+
+        reposicionar();
+        if (cambio) {
+            agregarBloqueNuevo();
+        }
+        return puntos;
+    }
+
+    /** Celda numero i de la linea l, contando desde el borde hacia el que se mueve. */
+    private Block getEnLinea(Direccion dir, int l, int i) {
+        switch (dir) {
+            case IZQUIERDA: return celdas[l][i];
+            case DERECHA:   return celdas[l][columnas - 1 - i];
+            case ARRIBA:    return celdas[i][l];
+            default:        return celdas[filas - 1 - i][l]; // ABAJO
+        }
+    }
+
+    private void setEnLinea(Direccion dir, int l, int i, Block b) {
+        switch (dir) {
+            case IZQUIERDA: celdas[l][i] = b; break;
+            case DERECHA:   celdas[l][columnas - 1 - i] = b; break;
+            case ARRIBA:    celdas[i][l] = b; break;
+            default:        celdas[filas - 1 - i][l] = b; break; // ABAJO
+        }
+    }
+
+    /** Coloca cada bloque en la posicion de pantalla que le corresponde a su celda. */
+    private void reposicionar() {
+        for (int f = 0; f < filas; f++) {
+            for (int c = 0; c < columnas; c++) {
+                if (celdas[f][c] != null) {
+                    celdas[f][c].setXY(xCelda(c), yCelda(f));
+                }
+            }
+        }
+    }
+
+    /** Crea un bloque (2 o 4) en una celda vacia al azar, si queda alguna. */
+    private void agregarBloqueNuevo() {
+        List<int[]> vacias = new ArrayList<int[]>();
+        for (int f = 0; f < filas; f++) {
+            for (int c = 0; c < columnas; c++) {
+                if (celdas[f][c] == null) {
+                    vacias.add(new int[] { f, c });
+                }
+            }
+        }
+        if (vacias.isEmpty()) {
+            return;
+        }
+        int[] celda = vacias.get(random.nextInt(vacias.size()));
+        celdas[celda[0]][celda[1]] = crearBloque(celda[0], celda[1]);
+        restantes++;
+    }
+
+    // ------------------------------------------------------------------
+    //  Dibujo, colisiones y estado
+    // ------------------------------------------------------------------
 
     public void draw(ShapeRenderer shape) {
         for (int f = 0; f < filas; f++) {
@@ -101,13 +233,29 @@ public class BlockGrid {
         }
     }
 
+    /**
+     * La pelota solo choca con UN bloque por fotograma: el mas cercano a su centro.
+     * (Antes chocaba con todos los que tocaba a la vez, y por eso "atravesaba" varios.)
+     */
     public void checkCollision(PingBall ball) {
+        Block masCercano = null;
+        long mejorDistancia = Long.MAX_VALUE;
         for (int f = 0; f < filas; f++) {
             for (int c = 0; c < columnas; c++) {
-                if (celdas[f][c] != null) {
-                    ball.checkCollision(celdas[f][c]);
+                Block b = celdas[f][c];
+                if (b != null && !b.isDestroyed() && ball.collidesWith(b)) {
+                    long dx = b.getX() + b.getWidth() / 2 - ball.getX();
+                    long dy = b.getY() + b.getHeight() / 2 - ball.getY();
+                    long distancia = dx * dx + dy * dy;
+                    if (distancia < mejorDistancia) {
+                        mejorDistancia = distancia;
+                        masCercano = b;
+                    }
                 }
             }
+        }
+        if (masCercano != null) {
+            ball.checkCollision(masCercano);
         }
     }
 

@@ -14,7 +14,7 @@ public class Paddle extends GameObject implements Collidable {
     @Override
     public void onCollision(PingBall ball) {
         ball.setColor(Color.GREEN);
-        ball.rebotarVertical();
+        ball.rebotarHaciaArriba();
     }
 
     @Override
