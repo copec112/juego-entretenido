@@ -10,6 +10,9 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.mygdx.game.entities.Block;
+import com.mygdx.game.entities.Paddle;
+import com.mygdx.game.entities.PingBall;
 
 
 public class MyGdxGame extends ApplicationAdapter {

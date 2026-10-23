@@ -1,4 +1,4 @@
-package com.mygdx.game;
+package com.mygdx.game.entities;
 
 /**
  * Interfaz para los objetos con los que la pelota puede chocar
