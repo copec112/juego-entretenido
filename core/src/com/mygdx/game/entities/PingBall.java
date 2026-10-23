@@ -64,6 +64,17 @@ public class PingBall extends GameObject {
         }
     }
 
+    /** Cambia la rapidez de la pelota sin alterar hacia donde va. */
+    public void setVelocidad(int vx, int vy) {
+        xSpeed = Integer.signum(xSpeed) * vx;
+        ySpeed = Integer.signum(ySpeed) * vy;
+    }
+
+    /** Fija el sentido horizontal: 1 = derecha, -1 = izquierda. */
+    public void setDireccionX(int sentido) {
+        xSpeed = Math.abs(xSpeed) * sentido;
+    }
+
     public void setColor(Color color) {
         this.color = color;
     }
