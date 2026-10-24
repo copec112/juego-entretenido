@@ -25,7 +25,7 @@ public class BlockGrid {
     private static final int SEPARACION = 10;
     private static final int MARGEN_X = 5;
     /** Al fusionar dos bloques y llegar a este valor, cae un premio de vida. */
-    public static final int VALOR_PREMIO = 256;
+    public static final int VALOR_PREMIO = 128;
 
     private final Block[][] celdas;
     private final int filas;

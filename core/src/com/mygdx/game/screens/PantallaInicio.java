@@ -14,7 +14,8 @@ import com.mygdx.game.managers.GameState;
 
 /**
  * Pantalla de inicio: titulo, controles y fichas de 2048 que suben flotando de fondo.
- * Completa los pasos de la plantilla (Pantalla). ENTER empieza la partida.
+ * Completa los pasos de la plantilla (Pantalla). ENTER empieza la partida y
+ * ESPACIO abre las reglas y el tutorial.
  */
 public class PantallaInicio extends Pantalla {
     private static final int FICHAS = 14;
@@ -115,11 +116,12 @@ public class PantallaInicio extends Pantalla {
 
         // aviso parpadeante
         float parpadeo = 0.4f + 0.6f * (0.5f + 0.5f * (float) Math.sin(getTiempo() * 4f));
-        textoCentrado(batch, medio, "Presiona ENTER para jugar", 2.1f, 1f, 1f, 1f, parpadeo, centro, 92);
+        textoCentrado(batch, medio, "Presiona ENTER para jugar", 2.1f, 1f, 1f, 1f, parpadeo, centro, 102);
+        textoCentrado(batch, medio, "ESPACIO: reglas y tutorial", 1.5f, 0.85f, 0.95f, 1f, 1f, centro, 68);
 
         int mejor = GameState.getInstance().getMejorPuntaje();
         if (mejor > 0) {
-            textoCentrado(batch, medio, "Mejor puntaje: " + mejor, 1.4f, 1f, 0.84f, 0f, 1f, centro, 48);
+            textoCentrado(batch, medio, "Mejor puntaje: " + mejor, 1.4f, 1f, 0.84f, 0f, 1f, centro, 38);
         }
     }
 
@@ -128,6 +130,8 @@ public class PantallaInicio extends Pantalla {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
             ctx.getAudio().sonarInicio();
             ctx.irA(new PantallaJuego(ctx));
+        } else if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            ctx.irA(new PantallaTutorial(ctx)); // reglas y tutorial
         }
     }
 }
