@@ -6,6 +6,7 @@ import java.util.Random;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
@@ -15,8 +16,11 @@ import com.mygdx.game.entities.BlockGrid;
 import com.mygdx.game.entities.Direccion;
 import com.mygdx.game.entities.Paddle;
 import com.mygdx.game.entities.PingBall;
-import com.mygdx.game.managers.Dificultad;
 import com.mygdx.game.managers.GameState;
+import com.mygdx.game.strategy.DificultadDificil;
+import com.mygdx.game.strategy.DificultadFacil;
+import com.mygdx.game.strategy.DificultadNormal;
+import com.mygdx.game.strategy.EstrategiaDificultad;
 
 
 public class MyGdxGame extends ApplicationAdapter {
@@ -37,6 +41,7 @@ public class MyGdxGame extends ApplicationAdapter {
 	private Paddle pad;
 	private BlockGrid blocks;
 	private GameState estado;
+	private EstrategiaDificultad dificultad = new DificultadNormal(); // patron Strategy
 	private int velocidadExtra; // velocidad extra actual segun la dificultad
 	private Random random = new Random();
     
@@ -68,12 +73,25 @@ public class MyGdxGame extends ApplicationAdapter {
 
 		/** Deja las pelotas que corresponden al puntaje actual, quietas sobre la paddle. */
 		private void servirPelotas() {
-			velocidadExtra = Dificultad.velocidadExtraPara(estado.getPuntaje());
+			velocidadExtra = dificultad.velocidadExtraPara(estado.getPuntaje());
 			balls.clear();
-			int cantidad = Dificultad.pelotasPara(estado.getPuntaje());
+			int cantidad = dificultad.pelotasPara(estado.getPuntaje());
 			for (int i = 0; i < cantidad; i++) {
 				balls.add(nuevaPelota(true));
 			}
+		}
+
+		/** Cambia la estrategia de dificultad en pleno juego; las pelotas vuelven a la paddle. */
+		public void cambiarDificultad(EstrategiaDificultad nueva) {
+			dificultad = nueva;
+			servirPelotas();
+		}
+
+		/** Teclas 1, 2 y 3: elegir dificultad facil, normal o dificil. */
+		private void elegirDificultadConTeclas() {
+			if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) cambiarDificultad(new DificultadFacil());
+			else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) cambiarDificultad(new DificultadNormal());
+			else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) cambiarDificultad(new DificultadDificil());
 		}
 
 		/** Pelota nueva sobre la paddle, con la velocidad de la dificultad actual. */
@@ -108,14 +126,14 @@ public class MyGdxGame extends ApplicationAdapter {
 		 * corresponde, agrega una pelota nueva que sale en movimiento desde la paddle.
 		 */
 		private void actualizarDificultad() {
-			int extra = Dificultad.velocidadExtraPara(estado.getPuntaje());
+			int extra = dificultad.velocidadExtraPara(estado.getPuntaje());
 			if (extra != velocidadExtra) {
 				velocidadExtra = extra;
 				for (PingBall b : balls) {
 					b.setVelocidad(VEL_X_BASE + extra, VEL_Y_BASE + extra);
 				}
 			}
-			while (balls.size() < Dificultad.pelotasPara(estado.getPuntaje())) {
+			while (balls.size() < dificultad.pelotasPara(estado.getPuntaje())) {
 				balls.add(nuevaPelota(false));
 			}
 		}
@@ -141,6 +159,9 @@ public class MyGdxGame extends ApplicationAdapter {
 			//dibujar textos
 			font.draw(batch, "Puntos: " + estado.getPuntaje(), 10, 25);
 			font.draw(batch, "Vidas : " + estado.getVidas(), Gdx.graphics.getWidth()-220, 25);
+			// dificultad actual (texto chico, entre los puntos y las vidas)
+			fontBloques.setColor(Color.WHITE);
+			fontBloques.draw(batch, "Dificultad: " + dificultad.getNombre() + "  [1] [2] [3]", 300, 22);
 			// numeros de los bloques
 			blocks.drawValores(batch, fontBloques);
 			batch.end();
@@ -151,6 +172,8 @@ public class MyGdxGame extends ApplicationAdapter {
 			Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT); 		
 	        shape.begin(ShapeRenderer.ShapeType.Filled);
 	        pad.draw(shape);
+	        // teclas 1, 2, 3: cambiar la estrategia de dificultad
+	        elegirDificultadConTeclas();
 	        // monitorear inicio del juego: pelotas quietas sobre la paddle
 	        manejarPelotasQuietas();
 	        for (PingBall b : balls) {
