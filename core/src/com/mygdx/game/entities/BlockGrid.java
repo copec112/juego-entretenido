@@ -5,7 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-import com.badlogic.gdx.Gdx;
+import com.mygdx.game.Config;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -76,7 +76,7 @@ public class BlockGrid {
     }
 
     private int yCelda(int fila) {
-        return Gdx.graphics.getHeight() - (fila + 1) * (BLOCK_HEIGHT + SEPARACION);
+        return Config.ALTO - (fila + 1) * (BLOCK_HEIGHT + SEPARACION);
     }
 
     public int getFilas() { return filas; }

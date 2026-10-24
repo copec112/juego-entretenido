@@ -23,7 +23,7 @@ public class LevelBuilder {
     // valores por defecto (nivel 1)
     private static final int FILAS_POR_DEFECTO = 7;
     private static final int COLUMNAS_POR_DEFECTO = 10;
-    private static final int BLOQUES_POR_DEFECTO = 8;
+    private static final int BLOQUES_POR_DEFECTO = 12;
     private static final int BLOQUES_POR_NIVEL = 2;   // bloques extra por cada nivel
     private static final int MAX_BLOQUES = 30;
     private static final int FILAS_LIBRES = 2;        // filas de abajo que parten vacias

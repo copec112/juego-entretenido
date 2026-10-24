@@ -12,6 +12,8 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.mygdx.game.builder.LevelBuilder;
 import com.mygdx.game.entities.BlockGrid;
 import com.mygdx.game.entities.Direccion;
 import com.mygdx.game.entities.Paddle;
@@ -19,7 +21,6 @@ import com.mygdx.game.entities.PingBall;
 import com.mygdx.game.managers.GameState;
 import com.mygdx.game.screens.PantallaGameOver;
 import com.mygdx.game.strategy.GestorDificultad;
-import com.mygdx.game.builder.LevelBuilder;
 
 
 public class MyGdxGame extends ApplicationAdapter {
@@ -28,10 +29,11 @@ public class MyGdxGame extends ApplicationAdapter {
 	private static final int PELOTA_RADIO = 10;
 	private static final int VEL_X_BASE = 5;
 	private static final int VEL_Y_BASE = 7;
-	private static final int ANCHO = 800;
-	private static final int ALTO = 480;
+	private static final int ANCHO = Config.ANCHO;
+	private static final int ALTO = Config.ALTO;
 
     private OrthographicCamera camera;
+	private FitViewport viewport; // escala el juego a cualquier ventana / pantalla completa
 	private SpriteBatch batch;	   
 	private BitmapFont font;
 	private BitmapFont fontBloques; // fuente chica para los numeros de los bloques
@@ -52,6 +54,8 @@ public class MyGdxGame extends ApplicationAdapter {
 		public void create () {	
 			camera = new OrthographicCamera();
 		    camera.setToOrtho(false, ANCHO, ALTO);
+		    viewport = new FitViewport(ANCHO, ALTO, camera);
+		    viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true); // ajusta la vista desde el inicio
 		    batch = new SpriteBatch();
 		    font = new BitmapFont();
 		    font.getData().setScale(3, 2);
@@ -65,12 +69,12 @@ public class MyGdxGame extends ApplicationAdapter {
 		    crearBloques();
 			
 		    shape = new ShapeRenderer();
-		    pad = new Paddle(Gdx.graphics.getWidth()/2-50,40,100,10);
+		    pad = new Paddle(ANCHO/2-50,40,100,10);
 		    servirPelotas();
 		}
 		/**
-		 * Crea la matriz de bloques del nivel actual: parte casi vacia, con pocos bloques
-		 * al azar (8 en el nivel 1, 2 mas por cada nivel). Las 2 filas de abajo quedan
+		 * Crea la matriz de bloques del nivel actual: parte con algunos bloques al azar
+		 * (11 en el nivel 1, 2 mas por cada nivel). Las 2 filas de abajo quedan
 		 * libres para poder mover los bloques.
 		 */
 		public void crearBloques() {
@@ -106,6 +110,7 @@ public class MyGdxGame extends ApplicationAdapter {
 			pantallaGameOver.actualizar(Gdx.graphics.getDeltaTime());
 			Gdx.gl.glClearColor(0.05f, 0f, 0f, 1f);
 			Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+			prepararVista();
 			Gdx.gl.glEnable(GL20.GL_BLEND); // para las transparencias del fondo
 			Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 			shape.begin(ShapeRenderer.ShapeType.Filled);
@@ -209,19 +214,32 @@ public class MyGdxGame extends ApplicationAdapter {
 			batch.begin();
 			//dibujar textos
 			font.draw(batch, "Puntos: " + estado.getPuntaje(), 10, 25);
-			font.draw(batch, "Vidas : " + estado.getVidas(), Gdx.graphics.getWidth()-220, 25);
+			font.draw(batch, "Vidas : " + estado.getVidas(), ANCHO-220, 25);
 			// numeros de los bloques
 			blocks.drawValores(batch, fontBloques);
 			batch.end();
 		}	
 		
 		@Override
+		public void resize (int width, int height) {
+			viewport.update(width, height, true); // mantiene la proporcion 800x480 con barras negras
+		}
+
+		/** Prepara la camara y el ShapeRenderer para dibujar en el mundo de 800x480. */
+		private void prepararVista() {
+			viewport.apply();
+			camera.update();
+			shape.setProjectionMatrix(camera.combined);
+		}
+
+		@Override
 		public void render () {
 			if (gameOver) {
 				renderGameOver();
 				return;
 			}
-			Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT); 		
+			Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+			prepararVista();
 	        shape.begin(ShapeRenderer.ShapeType.Filled);
 	        pad.draw(shape);
 	        // monitorear inicio del juego: pelotas quietas sobre la paddle
@@ -230,10 +248,15 @@ public class MyGdxGame extends ApplicationAdapter {
 	        	if (!b.estaQuieto()) b.update();
 	        }
 	        // cada pelota que se va por abajo cuesta una vida y vuelve a la paddle
+	        // Si todavia queda otra pelota jugando, la nueva sale sola; si no, espera el ESPACIO.
+	        boolean sigueJugando = false;
+	        for (PingBall b : balls) {
+	        	if (!b.estaQuieto() && b.getY()>=0) sigueJugando = true;
+	        }
 	        for (int i = 0; i < balls.size(); i++) {
 	        	if (balls.get(i).getY()<0) {
 	        		estado.perderVida();
-	        		balls.set(i, nuevaPelota(true));
+	        		balls.set(i, nuevaPelota(!sigueJugando));
 	        	}
 	        }
 	        // verificar game over: sin vidas se muestra la pantalla de game over

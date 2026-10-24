@@ -2,6 +2,7 @@ package com.mygdx.game.entities;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.mygdx.game.Config;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 
@@ -23,7 +24,7 @@ public class Paddle extends GameObject implements Collidable {
         int x2 = getX();
         if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) x2 = getX() - 15;
         if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) x2 = getX() + 15;
-        if (x2 > 0 && x2 + getWidth() < Gdx.graphics.getWidth()) {
+        if (x2 > 0 && x2 + getWidth() < Config.ANCHO) {
             setX(x2);
         }
         shape.rect(getX(), getY(), getWidth(), getHeight());
