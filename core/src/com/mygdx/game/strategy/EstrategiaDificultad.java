@@ -1,20 +1,23 @@
 package com.mygdx.game.strategy;
 
 /**
- * Patron Strategy: define "como se vuelve mas dificil el juego" segun el puntaje.
+ * Patron Strategy: define como es la dificultad en una etapa del juego.
  *
- * Cada implementacion es una estrategia intercambiable (facil, normal,
- * dificil). MyGdxGame (el contexto) solo conoce esta interfaz, asi que se
- * puede cambiar de dificultad mientras se juega sin tocar su codigo.
+ * Cada implementacion es una estrategia (Basica, Media, Avanzada, Experta)
+ * que dice cuantas pelotas hay en juego y que tan rapidas son. El juego
+ * solo conoce esta interfaz: a medida que sube el puntaje cambia de
+ * estrategia sola, sin tocar el resto del codigo.
  */
 public interface EstrategiaDificultad {
-
-    /** Nombre del modo, para mostrarlo en pantalla. */
+    /** Nombre de la etapa. */
     String getNombre();
 
-    /** Cuantas pelotas deben estar en juego con este puntaje. */
-    int pelotasPara(int puntaje);
+    /** Puntaje desde el cual esta estrategia pasa a usarse. */
+    int getPuntajeMinimo();
 
-    /** Cuanta velocidad extra (pixeles por fotograma) tienen las pelotas con este puntaje. */
-    int velocidadExtraPara(int puntaje);
+    /** Cuantas pelotas deben estar en juego. */
+    int getPelotas();
+
+    /** Velocidad extra de las pelotas, en pixeles por fotograma. */
+    int getVelocidadExtra();
 }

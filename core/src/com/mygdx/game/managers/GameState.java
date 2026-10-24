@@ -17,6 +17,7 @@ public class GameState {
     private int puntaje;
     private int vidas;
     private int nivel;
+    private int mejorPuntaje; // record de esta sesion (no se borra al reiniciar)
 
     // Constructor privado: nadie mas puede hacer "new GameState()"
     private GameState() {
@@ -40,8 +41,18 @@ public class GameState {
     public int getPuntaje() { return puntaje; }
     public int getVidas() { return vidas; }
     public int getNivel() { return nivel; }
+    public int getMejorPuntaje() { return mejorPuntaje; }
 
     public void sumarPuntos(int puntos) { puntaje += puntos; }
     public void perderVida() { vidas--; }
     public void subirNivel() { nivel++; }
+
+    /** Al terminar la partida guarda el mejor puntaje. Devuelve true si se batio el record. */
+    public boolean terminarPartida() {
+        boolean record = puntaje > mejorPuntaje;
+        if (record) {
+            mejorPuntaje = puntaje;
+        }
+        return record;
+    }
 }

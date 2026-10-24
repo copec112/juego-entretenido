@@ -6,9 +6,9 @@ import java.util.Random;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
@@ -17,42 +17,49 @@ import com.mygdx.game.entities.Direccion;
 import com.mygdx.game.entities.Paddle;
 import com.mygdx.game.entities.PingBall;
 import com.mygdx.game.managers.GameState;
-import com.mygdx.game.strategy.DificultadDificil;
-import com.mygdx.game.strategy.DificultadFacil;
-import com.mygdx.game.strategy.DificultadNormal;
-import com.mygdx.game.strategy.EstrategiaDificultad;
+import com.mygdx.game.screens.PantallaGameOver;
+import com.mygdx.game.strategy.GestorDificultad;
+import com.mygdx.game.builder.LevelBuilder;
 
 
 public class MyGdxGame extends ApplicationAdapter {
 	private static final int COLUMNAS = 10;
 	private static final int FILAS_GRILLA = 7; // filas totales de la matriz de bloques
-	private static final int BLOQUES_INICIALES = 8; // bloques con que parte el nivel 1
-	private static final int MAX_BLOQUES_INICIALES = 30;
 	private static final int PELOTA_RADIO = 10;
 	private static final int VEL_X_BASE = 5;
 	private static final int VEL_Y_BASE = 7;
+	private static final int ANCHO = 800;
+	private static final int ALTO = 480;
 
     private OrthographicCamera camera;
 	private SpriteBatch batch;	   
 	private BitmapFont font;
 	private BitmapFont fontBloques; // fuente chica para los numeros de los bloques
+	private BitmapFont fontTitulo;  // fuentes grandes para la pantalla de game over
+	private BitmapFont fontMedio;
 	private ShapeRenderer shape;
 	private ArrayList<PingBall> balls = new ArrayList<PingBall>();
 	private Paddle pad;
 	private BlockGrid blocks;
 	private GameState estado;
-	private EstrategiaDificultad dificultad = new DificultadNormal(); // patron Strategy
+	private GestorDificultad dificultad = new GestorDificultad(); // contexto del patron Strategy
 	private int velocidadExtra; // velocidad extra actual segun la dificultad
 	private Random random = new Random();
+	private PantallaGameOver pantallaGameOver = new PantallaGameOver();
+	private boolean gameOver; // true mientras se muestra la pantalla de game over
     
 		@Override
 		public void create () {	
 			camera = new OrthographicCamera();
-		    camera.setToOrtho(false, 800, 480);
+		    camera.setToOrtho(false, ANCHO, ALTO);
 		    batch = new SpriteBatch();
 		    font = new BitmapFont();
 		    font.getData().setScale(3, 2);
 		    fontBloques = new BitmapFont();
+		    fontTitulo = new BitmapFont();
+		    fontMedio = new BitmapFont();
+		    suavizar(fontTitulo); // los textos grandes se ven mas lisos con filtro lineal
+		    suavizar(fontMedio);
 		    estado = GameState.getInstance();
 		    estado.reiniciar();
 		    crearBloques();
@@ -67,31 +74,62 @@ public class MyGdxGame extends ApplicationAdapter {
 		 * libres para poder mover los bloques.
 		 */
 		public void crearBloques() {
-			int cantidad = Math.min(BLOQUES_INICIALES + 2 * (estado.getNivel() - 1), MAX_BLOQUES_INICIALES);
-			blocks = new BlockGrid(FILAS_GRILLA, COLUMNAS, cantidad, FILAS_GRILLA - 2);
+			// patron Builder: LevelBuilder arma la matriz del nivel
+			blocks = new LevelBuilder()
+					.conTamanio(FILAS_GRILLA, COLUMNAS)
+					.paraNivel(estado.getNivel())
+					.build();
+		}
+
+		private void suavizar(BitmapFont f) {
+			f.getRegion().getTexture().setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+		}
+
+		/** Termina la partida: guarda el record y muestra la pantalla de game over. */
+		private void iniciarGameOver() {
+			boolean record = estado.terminarPartida();
+			pantallaGameOver.iniciar(estado.getPuntaje(), estado.getNivel(), estado.getMejorPuntaje(), record);
+			gameOver = true;
+		}
+
+		/** Vuelve a jugar desde cero (puntaje, vidas y nivel). El record de la sesion se mantiene. */
+		private void reiniciarPartida() {
+			Gdx.gl.glClearColor(0f, 0f, 0f, 1f);
+			estado.reiniciar();
+			crearBloques();
+			servirPelotas(); // sin puntaje: vuelve a 1 pelota y velocidad normal
+			gameOver = false;
+		}
+
+		/** Un fotograma de la pantalla de game over; ENTER (pasado un momento) reinicia la partida. */
+		private void renderGameOver() {
+			pantallaGameOver.actualizar(Gdx.graphics.getDeltaTime());
+			Gdx.gl.glClearColor(0.05f, 0f, 0f, 1f);
+			Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+			Gdx.gl.glEnable(GL20.GL_BLEND); // para las transparencias del fondo
+			Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+			shape.begin(ShapeRenderer.ShapeType.Filled);
+			pantallaGameOver.dibujarFondo(shape, ANCHO, ALTO);
+			shape.end();
+			camera.update();
+			batch.setProjectionMatrix(camera.combined);
+			batch.begin();
+			pantallaGameOver.dibujarTextos(batch, fontTitulo, fontMedio, ANCHO, ALTO);
+			batch.end();
+			Gdx.gl.glDisable(GL20.GL_BLEND);
+			if (pantallaGameOver.puedeReiniciar() && Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+				reiniciarPartida();
+			}
 		}
 
 		/** Deja las pelotas que corresponden al puntaje actual, quietas sobre la paddle. */
 		private void servirPelotas() {
-			velocidadExtra = dificultad.velocidadExtraPara(estado.getPuntaje());
+			dificultad.actualizar(estado.getPuntaje());
+			velocidadExtra = dificultad.getVelocidadExtra();
 			balls.clear();
-			int cantidad = dificultad.pelotasPara(estado.getPuntaje());
-			for (int i = 0; i < cantidad; i++) {
+			for (int i = 0; i < dificultad.getPelotas(); i++) {
 				balls.add(nuevaPelota(true));
 			}
-		}
-
-		/** Cambia la estrategia de dificultad en pleno juego; las pelotas vuelven a la paddle. */
-		public void cambiarDificultad(EstrategiaDificultad nueva) {
-			dificultad = nueva;
-			servirPelotas();
-		}
-
-		/** Teclas 1, 2 y 3: elegir dificultad facil, normal o dificil. */
-		private void elegirDificultadConTeclas() {
-			if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) cambiarDificultad(new DificultadFacil());
-			else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) cambiarDificultad(new DificultadNormal());
-			else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) cambiarDificultad(new DificultadDificil());
 		}
 
 		/** Pelota nueva sobre la paddle, con la velocidad de la dificultad actual. */
@@ -122,24 +160,37 @@ public class MyGdxGame extends ApplicationAdapter {
 		}
 
 		/**
-		 * Aplica la dificultad segun el puntaje: ajusta la velocidad de las pelotas y, si
-		 * corresponde, agrega una pelota nueva que sale en movimiento desde la paddle.
+		 * La dificultad evoluciona sola con el puntaje: el gestor cambia de estrategia, se ajusta
+		 * la velocidad de las pelotas y, si hace falta, entra una pelota nueva en movimiento.
 		 */
 		private void actualizarDificultad() {
-			int extra = dificultad.velocidadExtraPara(estado.getPuntaje());
+			dificultad.actualizar(estado.getPuntaje());
+			int extra = dificultad.getVelocidadExtra();
 			if (extra != velocidadExtra) {
 				velocidadExtra = extra;
 				for (PingBall b : balls) {
 					b.setVelocidad(VEL_X_BASE + extra, VEL_Y_BASE + extra);
 				}
 			}
-			while (balls.size() < dificultad.pelotasPara(estado.getPuntaje())) {
+			while (balls.size() < dificultad.getPelotas()) {
 				balls.add(nuevaPelota(false));
 			}
 		}
 
-		/** W, A, S, D mueven los bloques (estilo 2048); cada movimiento valido agrega un bloque nuevo. */
+		/** True si al menos una pelota ya fue lanzada (no esta quieta sobre la paddle). */
+		private boolean hayPelotaEnMovimiento() {
+			for (PingBall b : balls) {
+				if (!b.estaQuieto()) return true;
+			}
+			return false;
+		}
+
+		/**
+		 * W, A, S, D mueven los bloques (estilo 2048); cada movimiento valido agrega un bloque nuevo.
+		 * Solo se puede mover mientras hay una pelota en juego: antes de lanzarla, los bloques no se mueven.
+		 */
 		private void moverBloquesConTeclas() {
+			if (!hayPelotaEnMovimiento()) return;
 			Direccion dir = null;
 			if (Gdx.input.isKeyJustPressed(Input.Keys.W)) dir = Direccion.ARRIBA;
 			else if (Gdx.input.isKeyJustPressed(Input.Keys.S)) dir = Direccion.ABAJO;
@@ -159,9 +210,6 @@ public class MyGdxGame extends ApplicationAdapter {
 			//dibujar textos
 			font.draw(batch, "Puntos: " + estado.getPuntaje(), 10, 25);
 			font.draw(batch, "Vidas : " + estado.getVidas(), Gdx.graphics.getWidth()-220, 25);
-			// dificultad actual (texto chico, entre los puntos y las vidas)
-			fontBloques.setColor(Color.WHITE);
-			fontBloques.draw(batch, "Dificultad: " + dificultad.getNombre() + "  [1] [2] [3]", 300, 22);
 			// numeros de los bloques
 			blocks.drawValores(batch, fontBloques);
 			batch.end();
@@ -169,11 +217,13 @@ public class MyGdxGame extends ApplicationAdapter {
 		
 		@Override
 		public void render () {
+			if (gameOver) {
+				renderGameOver();
+				return;
+			}
 			Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT); 		
 	        shape.begin(ShapeRenderer.ShapeType.Filled);
 	        pad.draw(shape);
-	        // teclas 1, 2, 3: cambiar la estrategia de dificultad
-	        elegirDificultadConTeclas();
 	        // monitorear inicio del juego: pelotas quietas sobre la paddle
 	        manejarPelotasQuietas();
 	        for (PingBall b : balls) {
@@ -186,11 +236,11 @@ public class MyGdxGame extends ApplicationAdapter {
 	        		balls.set(i, nuevaPelota(true));
 	        	}
 	        }
-	        // verificar game over
+	        // verificar game over: sin vidas se muestra la pantalla de game over
 	        if (estado.getVidas()<=0) {
-	        	estado.reiniciar(); // game over: vuelve todo a cero (puntaje, vidas y nivel)
-	        	crearBloques();
-	        	servirPelotas();    // sin puntaje: vuelve a 1 pelota y velocidad normal
+	        	shape.end();
+	        	iniciarGameOver();
+	        	return;
 	        }
 	        // verificar si el nivel se terminó
 	        if (blocks.estaVacia()) {
