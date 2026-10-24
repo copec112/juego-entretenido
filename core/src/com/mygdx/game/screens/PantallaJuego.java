@@ -13,6 +13,7 @@ import com.mygdx.game.entities.BlockGrid;
 import com.mygdx.game.entities.Direccion;
 import com.mygdx.game.entities.Paddle;
 import com.mygdx.game.entities.PingBall;
+import com.mygdx.game.entities.VidaExtra;
 import com.mygdx.game.managers.GameState;
 import com.mygdx.game.strategy.GestorDificultad;
 
@@ -28,6 +29,8 @@ public class PantallaJuego extends Pantalla {
     private static final int VEL_Y_BASE = 7;
 
     private final ArrayList<PingBall> balls = new ArrayList<PingBall>();
+    private final ArrayList<VidaExtra> premios = new ArrayList<VidaExtra>(); // corazones que estan cayendo
+    private float avisoVida;  // segundos que falta para que se apague el aviso "+1 VIDA"
     private final Paddle pad;
     private BlockGrid blocks;
     private final GameState estado;
@@ -75,17 +78,12 @@ public class PantallaJuego extends Pantalla {
         for (PingBall b : balls) {
             if (!b.estaQuieto()) b.update();
         }
-        // cada pelota que se va por abajo cuesta una vida y vuelve a la paddle
-        // Si todavia queda otra pelota jugando, la nueva sale sola; si no, espera el ESPACIO.
-        boolean sigueJugando = false;
-        for (PingBall b : balls) {
-            if (!b.estaQuieto() && b.getY() >= 0) sigueJugando = true;
-        }
+        // cada pelota que se va por abajo cuesta una vida y vuelve quieta a la paddle (espera el ESPACIO)
         for (int i = 0; i < balls.size(); i++) {
             if (balls.get(i).getY() < 0) {
                 estado.perderVida();
                 ctx.getAudio().sonarVida();
-                balls.set(i, nuevaPelota(!sigueJugando));
+                balls.set(i, nuevaPelota(true));
             }
         }
         // sin vidas: pantalla de game over
@@ -101,6 +99,8 @@ public class PantallaJuego extends Pantalla {
         }
         // teclas W, A, S, D: mover los bloques
         moverBloquesConTeclas();
+        // corazones que caen: si la paleta los atrapa, vida extra
+        actualizarPremios(delta);
         // colisiones de las pelotas con los bloques
         for (PingBall b : balls) {
             blocks.checkCollision(b);
@@ -111,10 +111,32 @@ public class PantallaJuego extends Pantalla {
             estado.sumarPuntos(puntos);
             ctx.getAudio().sonarRomper();
         }
+        // al llegar a 2048 puntos: pantalla de victoria, y despues se sigue jugando (modo infinito)
+        if (estado.verificarMeta()) {
+            ctx.irA(new PantallaVictoria(ctx, this));
+            return;
+        }
         // con el nuevo puntaje, subir la dificultad si corresponde
         actualizarDificultad();
         for (PingBall b : balls) {
             b.checkCollision(pad);
+        }
+    }
+
+    /** Mueve los corazones que caen: la paleta los atrapa (+1 vida) o se pierden al caer. */
+    private void actualizarPremios(float delta) {
+        if (avisoVida > 0) avisoVida -= delta;
+        for (int i = premios.size() - 1; i >= 0; i--) {
+            VidaExtra v = premios.get(i);
+            v.update();
+            if (v.tocaA(pad)) {
+                estado.ganarVida();
+                ctx.getAudio().sonarPremio();
+                avisoVida = 1.2f;
+                premios.remove(i);
+            } else if (v.estaPerdida()) {
+                premios.remove(i);
+            }
         }
     }
 
@@ -157,7 +179,8 @@ public class PantallaJuego extends Pantalla {
 
     /**
      * La dificultad evoluciona sola con el puntaje: el gestor cambia de estrategia, se ajusta
-     * la velocidad de las pelotas y, si hace falta, entra una pelota nueva en movimiento.
+     * la velocidad de las pelotas y, si hace falta, aparece una pelota nueva sobre la paddle
+     * (queda quieta hasta que se aprieta ESPACIO, igual que al empezar).
      */
     private void actualizarDificultad() {
         dificultad.actualizar(estado.getPuntaje());
@@ -169,7 +192,7 @@ public class PantallaJuego extends Pantalla {
             }
         }
         while (balls.size() < dificultad.getPelotas()) {
-            balls.add(nuevaPelota(false));
+            balls.add(nuevaPelota(true));
         }
     }
 
@@ -195,6 +218,10 @@ public class PantallaJuego extends Pantalla {
         if (dir != null) {
             // fusionar bloques NO da puntos: el puntaje sube solo al romper bloques con la pelota
             blocks.mover(dir);
+            // si dos bloques se fusionaron hasta 256, de ese bloque cae un corazon
+            for (int[] pos : blocks.retirarPremios()) {
+                premios.add(new VidaExtra(pos[0] + 23, pos[1]));
+            }
         }
     }
 
@@ -211,6 +238,9 @@ public class PantallaJuego extends Pantalla {
     protected void dibujarFormas(ShapeRenderer shape) {
         pad.draw(shape);
         blocks.draw(shape);
+        for (VidaExtra v : premios) {
+            v.draw(shape);
+        }
         for (PingBall b : balls) {
             b.draw(shape);
         }
@@ -220,10 +250,15 @@ public class PantallaJuego extends Pantalla {
     protected void dibujarTextos(SpriteBatch batch) {
         ctx.getFontHud().draw(batch, "Puntos: " + estado.getPuntaje(), 10, 25);
         ctx.getFontHud().draw(batch, "Vidas : " + estado.getVidas(), Config.ANCHO - 220, 25);
-        textoCentrado(batch, ctx.getFontMedio(), "Nivel " + estado.getNivel(), 1.4f,
+        textoCentrado(batch, ctx.getFontMedio(), "Nivel " + estado.getNivel() + (estado.isMetaAlcanzada() ? "  -  Modo infinito" : ""), 1.4f,
                 0.8f, 0.8f, 0.9f, 1f, Config.ANCHO / 2f, 22);
         // numeros de los bloques
         blocks.drawValores(batch, ctx.getFontBloques());
+        // aviso al atrapar un corazon
+        if (avisoVida > 0) {
+            textoCentrado(batch, ctx.getFontMedio(), "+1 VIDA", 1.8f, 0.4f, 1f, 0.5f, Math.min(1f, avisoVida * 2f),
+                    pad.getX() + pad.getWidth() / 2f, pad.getY() + 60 + (1.2f - avisoVida) * 30);
+        }
     }
 
     @Override

@@ -24,11 +24,14 @@ public class BlockGrid {
     private static final int BLOCK_HEIGHT = 26;
     private static final int SEPARACION = 10;
     private static final int MARGEN_X = 5;
+    /** Al fusionar dos bloques y llegar a este valor, cae un premio de vida. */
+    public static final int VALOR_PREMIO = 256;
 
     private final Block[][] celdas;
     private final int filas;
     private final int columnas;
     private int restantes;
+    private final List<Block> premiosPendientes = new ArrayList<Block>(); // bloques que llegaron a VALOR_PREMIO
     private final Random random = new Random();
     private final GlyphLayout layout = new GlyphLayout(); // para centrar los numeros
 
@@ -114,7 +117,8 @@ public class BlockGrid {
      * aparece un bloque nuevo (2 o 4) en una celda vacia al azar.
      *
      * Fusionar NO da puntos: el puntaje solo sube cuando la pelota rompe un
-     * bloque (ver eliminarDestruidos()).
+     * bloque (ver eliminarDestruidos()). Si una fusion llega a VALOR_PREMIO,
+     * el bloque queda anotado para soltar un corazon (ver retirarPremios()).
      */
     public void mover(Direccion dir) {
         boolean cambio = false;
@@ -140,6 +144,9 @@ public class BlockGrid {
                 Block b = lista.get(i);
                 if (i + 1 < lista.size() && lista.get(i + 1).getValor() == b.getValor()) {
                     b.setValor(b.getValor() * 2);
+                    if (b.getValor() == VALOR_PREMIO) {
+                        premiosPendientes.add(b);
+                    }
                     restantes--;
                     cambio = true;
                     i += 2;
@@ -163,6 +170,19 @@ public class BlockGrid {
         if (cambio) {
             agregarBloqueNuevo();
         }
+    }
+
+    /**
+     * Posiciones (x, y) de los bloques que llegaron a VALOR_PREMIO desde la ultima vez que se
+     * pregunto. Cada una es un premio de vida que debe empezar a caer. La lista se vacia al leerla.
+     */
+    public List<int[]> retirarPremios() {
+        List<int[]> posiciones = new ArrayList<int[]>();
+        for (Block b : premiosPendientes) {
+            posiciones.add(new int[] { b.getX(), b.getY() });
+        }
+        premiosPendientes.clear();
+        return posiciones;
     }
 
     /** Celda numero i de la linea l, contando desde el borde hacia el que se mueve. */

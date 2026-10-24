@@ -84,7 +84,7 @@ public class PantallaInicio extends Pantalla {
         BitmapFont grande = ctx.getFontTitulo();
         BitmapFont medio = ctx.getFontMedio();
         float centro = Config.ANCHO / 2f;
-        float entrada = Math.min(1f, tiempo / 0.6f);
+        float entrada = Math.min(1f, getTiempo() / 0.6f);
 
         // numeros de las fichas
         for (Ficha f : fichas) {
@@ -95,10 +95,10 @@ public class PantallaInicio extends Pantalla {
         }
 
         // titulo
-        float pulso = 1f + 0.03f * (float) Math.sin(tiempo * 3f);
+        float pulso = 1f + 0.03f * (float) Math.sin(getTiempo() * 3f);
         textoCentrado(batch, grande, "BREAKOUT", 4.4f * pulso, 1f, 1f, 1f, entrada, centro, 450 - 30 * (1 - suave(entrada)));
         textoCentrado(batch, grande, "2048", 6.5f * pulso, 1f, 0.84f, 0f, entrada, centro, 375 - 30 * (1 - suave(entrada)));
-        textoCentrado(batch, medio, "Rompe bloques, fusionalos y sobrevive", 1.3f, 0.85f, 0.85f, 1f, entrada, centro, 270);
+        textoCentrado(batch, medio, "Rompe bloques, fusionalos y llega a 2048", 1.3f, 0.85f, 0.85f, 1f, entrada, centro, 270);
 
         // controles
         String[][] controles = {
@@ -114,7 +114,7 @@ public class PantallaInicio extends Pantalla {
         }
 
         // aviso parpadeante
-        float parpadeo = 0.4f + 0.6f * (0.5f + 0.5f * (float) Math.sin(tiempo * 4f));
+        float parpadeo = 0.4f + 0.6f * (0.5f + 0.5f * (float) Math.sin(getTiempo() * 4f));
         textoCentrado(batch, medio, "Presiona ENTER para jugar", 2.1f, 1f, 1f, 1f, parpadeo, centro, 92);
 
         int mejor = GameState.getInstance().getMejorPuntaje();

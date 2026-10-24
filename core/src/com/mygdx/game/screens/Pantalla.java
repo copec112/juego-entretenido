@@ -30,7 +30,7 @@ import com.mygdx.game.Config;
  */
 public abstract class Pantalla {
     protected final Contexto ctx;
-    protected float tiempo; // segundos desde que se muestra la pantalla
+    private float tiempo; // segundos desde que se muestra la pantalla
     private final GlyphLayout layout = new GlyphLayout(); // para medir y centrar textos
 
     protected Pantalla(Contexto ctx) {
@@ -60,6 +60,11 @@ public abstract class Pantalla {
         if (Gdx.input.isKeyJustPressed(Input.Keys.M)) {     // 7
             ctx.getAudio().alternarSilencio();
         }
+    }
+
+    /** Segundos transcurridos desde que se muestra la pantalla. */
+    protected float getTiempo() {
+        return tiempo;
     }
 
     // ------------------------------------------------------------------

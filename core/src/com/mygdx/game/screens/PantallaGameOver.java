@@ -52,7 +52,7 @@ public class PantallaGameOver extends Pantalla {
 
     /** Evita reiniciar sin querer si el jugador seguia apretando teclas al morir. */
     public boolean puedeReiniciar() {
-        return tiempo >= ESPERA_REINICIO;
+        return getTiempo() >= ESPERA_REINICIO;
     }
 
     public boolean isNuevoRecord() {
@@ -61,8 +61,8 @@ public class PantallaGameOver extends Pantalla {
 
     /** Puntaje que se esta mostrando ahora (sube de 0 al puntaje final). */
     public int getPuntajeMostrado() {
-        if (tiempo < INICIO_PUNTAJE) return 0;
-        float p = Math.min(1f, (tiempo - INICIO_PUNTAJE) / DURACION_CONTEO);
+        if (getTiempo() < INICIO_PUNTAJE) return 0;
+        float p = Math.min(1f, (getTiempo() - INICIO_PUNTAJE) / DURACION_CONTEO);
         return (int) (puntaje * suave(p));
     }
 
@@ -72,7 +72,7 @@ public class PantallaGameOver extends Pantalla {
 
     @Override
     protected void actualizar(float delta) {
-        // todo depende de "tiempo", que la plantilla ya va sumando
+        // todo depende del tiempo, que la plantilla ya va sumando
     }
 
     @Override
@@ -90,10 +90,10 @@ public class PantallaGameOver extends Pantalla {
     protected void dibujarFormas(ShapeRenderer shape) {
         int ancho = Config.ANCHO;
         int alto = Config.ALTO;
-        float entrada = Math.min(1f, tiempo / 0.4f);
+        float entrada = Math.min(1f, getTiempo() / 0.4f);
 
         // resplandor rojo que late
-        float latido = 0.5f + 0.5f * (float) Math.sin(tiempo * 4f);
+        float latido = 0.5f + 0.5f * (float) Math.sin(getTiempo() * 4f);
         shape.setColor(0.7f, 0f, 0f, entrada * (0.10f + 0.10f * latido));
         shape.rect(0, 0, ancho, alto);
 
@@ -104,7 +104,7 @@ public class PantallaGameOver extends Pantalla {
         shape.rect(0, 0, ancho, grosor);
 
         // linea que se abre desde el centro, bajo el titulo
-        float apertura = suave(Math.min(1f, Math.max(0f, (tiempo - 0.3f) / 0.5f)));
+        float apertura = suave(Math.min(1f, Math.max(0f, (getTiempo() - 0.3f) / 0.5f)));
         float largo = ancho * 0.7f * apertura;
         shape.setColor(1f, 0.2f, 0.2f, 1f);
         shape.rect((ancho - largo) / 2f, alto * 0.62f, largo, 3f);
@@ -119,35 +119,35 @@ public class PantallaGameOver extends Pantalla {
 
         // titulo: cae desde grande, tiembla al principio y despues late
         float escala;
-        if (tiempo < 0.35f) {
-            escala = 9f - 4f * suave(tiempo / 0.35f);
+        if (getTiempo() < 0.35f) {
+            escala = 9f - 4f * suave(getTiempo() / 0.35f);
         } else {
-            escala = 5f + 0.15f * (float) Math.sin((tiempo - 0.35f) * 6f);
+            escala = 5f + 0.15f * (float) Math.sin((getTiempo() - 0.35f) * 6f);
         }
-        float temblor = Math.max(0f, 1f - tiempo / 0.6f) * 14f;
+        float temblor = Math.max(0f, 1f - getTiempo() / 0.6f) * 14f;
         float dx = (random.nextFloat() - 0.5f) * 2f * temblor;
         float dy = (random.nextFloat() - 0.5f) * 2f * temblor;
-        textoCentrado(batch, grande, "GAME OVER", escala, 1f, 0.12f, 0.12f, Math.min(1f, tiempo / 0.25f),
+        textoCentrado(batch, grande, "GAME OVER", escala, 1f, 0.12f, 0.12f, Math.min(1f, getTiempo() / 0.25f),
                 centro + dx, alto * 0.84f + dy);
 
         // puntaje final contando hacia arriba
-        if (tiempo >= INICIO_PUNTAJE) {
+        if (getTiempo() >= INICIO_PUNTAJE) {
             textoCentrado(batch, medio, "PUNTAJE  " + getPuntajeMostrado(), 2.6f, 1f, 1f, 1f, 1f, centro, alto * 0.54f);
         }
 
         // nivel alcanzado
         float tNivel = INICIO_PUNTAJE + 0.6f;
-        if (tiempo >= tNivel) {
+        if (getTiempo() >= tNivel) {
             textoCentrado(batch, medio, "Nivel alcanzado: " + nivel, 1.8f, 0.8f, 0.8f, 0.8f,
-                    Math.min(1f, (tiempo - tNivel) / 0.4f), centro, alto * 0.42f);
+                    Math.min(1f, (getTiempo() - tNivel) / 0.4f), centro, alto * 0.42f);
         }
 
         // record (parpadeante y dorado) o mejor puntaje
         float tRecord = INICIO_PUNTAJE + DURACION_CONTEO;
-        if (tiempo >= tRecord) {
+        if (getTiempo() >= tRecord) {
             if (nuevoRecord) {
-                float parpadeo = 0.55f + 0.45f * (float) Math.sin(tiempo * 9f);
-                float pulso = 2.4f + 0.2f * (float) Math.sin(tiempo * 9f);
+                float parpadeo = 0.55f + 0.45f * (float) Math.sin(getTiempo() * 9f);
+                float pulso = 2.4f + 0.2f * (float) Math.sin(getTiempo() * 9f);
                 textoCentrado(batch, medio, "NUEVO RECORD!", pulso, 1f, 0.84f, 0f, parpadeo, centro, alto * 0.32f);
             } else {
                 textoCentrado(batch, medio, "Mejor puntaje: " + mejorPuntaje, 1.8f, 1f, 0.84f, 0f, 1f, centro, alto * 0.32f);
@@ -156,7 +156,7 @@ public class PantallaGameOver extends Pantalla {
 
         // aviso para reiniciar (parpadea)
         if (puedeReiniciar()) {
-            float parpadeo = 0.35f + 0.65f * (0.5f + 0.5f * (float) Math.sin(tiempo * 5f));
+            float parpadeo = 0.35f + 0.65f * (0.5f + 0.5f * (float) Math.sin(getTiempo() * 5f));
             textoCentrado(batch, medio, "Presiona ENTER para jugar de nuevo", 1.6f, 1f, 1f, 1f, parpadeo, centro, alto * 0.17f);
         }
     }

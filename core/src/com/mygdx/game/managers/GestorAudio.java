@@ -20,6 +20,7 @@ public class GestorAudio {
     private Sound vida;
     private Sound gameOver;
     private Sound inicio;
+    private Sound victoria;
 
     private boolean musicaActiva;  // la partida quiere que suene la musica
     private boolean silenciado;    // el jugador la silencio con M
@@ -36,6 +37,7 @@ public class GestorAudio {
         vida = cargarSonido("vida.wav");
         gameOver = cargarSonido("gameover.wav");
         inicio = cargarSonido("inicio.wav");
+        victoria = cargarSonido("victoria.wav");
     }
 
     private Sound cargarSonido(String archivo) {
@@ -85,6 +87,8 @@ public class GestorAudio {
     public void sonarVida()     { reproducir(vida); }
     public void sonarGameOver() { reproducir(gameOver); }
     public void sonarInicio()   { reproducir(inicio); }
+    public void sonarVictoria() { reproducir(victoria); }
+    public void sonarPremio()   { reproducir(inicio); } // corazon atrapado
 
     private void reproducir(Sound s) {
         if (s != null && !silenciado) {
@@ -98,5 +102,6 @@ public class GestorAudio {
         if (vida != null) vida.dispose();
         if (gameOver != null) gameOver.dispose();
         if (inicio != null) inicio.dispose();
+        if (victoria != null) victoria.dispose();
     }
 }
