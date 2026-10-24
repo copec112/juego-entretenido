@@ -18,15 +18,19 @@ public class Paddle extends GameObject implements Collidable {
         ball.rebotarHaciaArriba();
     }
 
-    @Override
-    public void draw(ShapeRenderer shape) {
-        shape.setColor(Color.BLUE);
+    /** Mueve la paleta con las flechas izquierda y derecha (sin salirse de la pantalla). */
+    public void actualizar() {
         int x2 = getX();
         if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) x2 = getX() - 15;
         if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) x2 = getX() + 15;
         if (x2 > 0 && x2 + getWidth() < Config.ANCHO) {
             setX(x2);
         }
+    }
+
+    @Override
+    public void draw(ShapeRenderer shape) {
+        shape.setColor(Color.BLUE);
         shape.rect(getX(), getY(), getWidth(), getHeight());
     }
 }

@@ -53,7 +53,7 @@ public class Block extends GameObject implements Collidable {
     }
 
     // Paleta con colores bien distintos entre si
-    private static Color colorPorValor(int valor) {
+    public static Color colorPorValor(int valor) {
         switch (valor) {
             case 2:    return rgb(0x4FC3F7); // celeste
             case 4:    return rgb(0x66BB6A); // verde
