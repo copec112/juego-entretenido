@@ -26,11 +26,12 @@ public class VidaExtra extends GameObject {
         return getY() + getHeight() < 0;
     }
 
-    /** True si la caja del corazon se cruza con la de la paleta. */
-    public boolean tocaA(Paddle paleta) {
-        boolean cruzaX = getX() + getWidth() >= paleta.getX() && getX() <= paleta.getX() + paleta.getWidth();
-        boolean cruzaY = getY() + getHeight() >= paleta.getY() && getY() <= paleta.getY() + paleta.getHeight();
-        return cruzaX && cruzaY;
+    /**
+     * True si la caja del corazon se cruza con la del objeto dado (en el juego, la paleta).
+     * Depende solo de Rectangular, no de una clase concreta.
+     */
+    public boolean tocaA(Rectangular objeto) {
+        return intersecta(objeto);
     }
 
     @Override

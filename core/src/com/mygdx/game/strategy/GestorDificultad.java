@@ -8,6 +8,7 @@ import java.util.List;
  *
  * Guarda la estrategia de dificultad actual y delega en ella. Segun el
  * puntaje va cambiando de estrategia: mientras mas se juega, mas dificil.
+ * Tambien se puede cambiar a mano con setEstrategia().
  *
  * Para ajustar el juego basta con editar la lista de etapas: quitar una
  * estrategia baja el maximo de pelotas, y el puntaje en que entra cada una
@@ -46,7 +47,16 @@ public class GestorDificultad {
         return estrategia;
     }
 
-    // El contexto delega en la estrategia actual
-    public int getPelotas() { return estrategia.getPelotas(); }
-    public int getVelocidadExtra() { return estrategia.getVelocidadExtra(); }
+    /** Cambia la estrategia desde afuera (por ejemplo, para forzar una dificultad). */
+    public void setEstrategia(EstrategiaDificultad nueva) {
+        if (nueva == null) {
+            throw new IllegalArgumentException("La estrategia no puede ser null");
+        }
+        this.estrategia = nueva;
+    }
+
+    /** El contexto delega en la estrategia actual: ella sabe como aplicarse al juego. */
+    public void aplicar(ControlPelotas juego) {
+        estrategia.aplicar(juego);
+    }
 }

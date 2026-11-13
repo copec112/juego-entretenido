@@ -1,7 +1,6 @@
 package com.mygdx.game.entities;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -25,47 +24,48 @@ public class BlockGrid {
     private static final int SEPARACION = 10;
     private static final int MARGEN_X = 5;
     /** Al fusionar dos bloques y llegar a este valor, cae un premio de vida. */
-    public static final int VALOR_PREMIO = 128;
+    public static final int VALOR_PREMIO = 256;
 
     private final Block[][] celdas;
     private final int filas;
     private final int columnas;
     private int restantes;
-    private final List<Block> premiosPendientes = new ArrayList<Block>(); // bloques que llegaron a VALOR_PREMIO
+    private OyentePremio oyentePremio; // se avisa cuando una fusion llega a VALOR_PREMIO
     private final Random random = new Random();
     private final GlyphLayout layout = new GlyphLayout(); // para centrar los numeros
 
     /**
-     * La matriz parte casi vacia: se ponen "bloquesIniciales" bloques (2 o 4) en
-     * celdas elegidas al azar, solo dentro de las primeras "filasIniciales" filas
-     * (las de arriba), para que abajo quede espacio libre por donde moverlos.
+     * Crea una matriz vacia. Los bloques los pone quien la construye con
+     * colocarBloque (en el juego, LevelBuilder).
      *
-     * @param filas            filas totales de la matriz
-     * @param columnas         columnas totales de la matriz
-     * @param bloquesIniciales cuantos bloques parten en la matriz
-     * @param filasIniciales   en cuantas filas (desde arriba) pueden aparecer al inicio
+     * @param filas    filas totales de la matriz
+     * @param columnas columnas totales de la matriz
      */
-    public BlockGrid(int filas, int columnas, int bloquesIniciales, int filasIniciales) {
+    public BlockGrid(int filas, int columnas) {
         this.filas = filas;
         this.columnas = columnas;
         this.celdas = new Block[filas][columnas];
-
-        List<int[]> candidatas = new ArrayList<int[]>();
-        for (int f = 0; f < filasIniciales && f < filas; f++) {
-            for (int c = 0; c < columnas; c++) {
-                candidatas.add(new int[] { f, c });
-            }
-        }
-        Collections.shuffle(candidatas, random);
-        for (int i = 0; i < bloquesIniciales && i < candidatas.size(); i++) {
-            int[] celda = candidatas.get(i);
-            celdas[celda[0]][celda[1]] = crearBloque(celda[0], celda[1]);
-            restantes++;
-        }
     }
 
-    private Block crearBloque(int fila, int columna) {
-        return new Block(xCelda(columna), yCelda(fila), BLOCK_WIDTH, BLOCK_HEIGHT, valorInicial());
+    /** Pone un bloque con ese valor en la celda (fila, columna). La celda debe existir y estar vacia. */
+    public void colocarBloque(int fila, int columna, int valor) {
+        if (fila < 0 || fila >= filas || columna < 0 || columna >= columnas) {
+            throw new IllegalArgumentException("La celda (" + fila + ", " + columna + ") no existe");
+        }
+        if (celdas[fila][columna] != null) {
+            throw new IllegalArgumentException("La celda (" + fila + ", " + columna + ") ya tiene un bloque");
+        }
+        celdas[fila][columna] = crearBloque(fila, columna, valor);
+        restantes++;
+    }
+
+    /** Quien quiera enterarse de los premios se registra aqui (null = nadie). */
+    public void setOyentePremio(OyentePremio oyente) {
+        this.oyentePremio = oyente;
+    }
+
+    private Block crearBloque(int fila, int columna, int valor) {
+        return new Block(xCelda(columna), yCelda(fila), BLOCK_WIDTH, BLOCK_HEIGHT, valor);
     }
 
     /** Los bloques nuevos parten con 2 o 4 (50% cada uno). */
@@ -93,19 +93,6 @@ public class BlockGrid {
         return celdas[fila][columna];
     }
 
-    /** Vecinos (arriba, abajo, izquierda, derecha) que existen. */
-    public List<Block> getVecinos(int fila, int columna) {
-        List<Block> vecinos = new ArrayList<Block>();
-        int[][] direcciones = { {-1, 0}, {1, 0}, {0, -1}, {0, 1} };
-        for (int[] d : direcciones) {
-            Block b = getBlock(fila + d[0], columna + d[1]);
-            if (b != null) {
-                vecinos.add(b);
-            }
-        }
-        return vecinos;
-    }
-
     // ------------------------------------------------------------------
     //  Movimiento estilo 2048
     // ------------------------------------------------------------------
@@ -117,11 +104,11 @@ public class BlockGrid {
      * aparece un bloque nuevo (2 o 4) en una celda vacia al azar.
      *
      * Fusionar NO da puntos: el puntaje solo sube cuando la pelota rompe un
-     * bloque (ver eliminarDestruidos()). Si una fusion llega a VALOR_PREMIO,
-     * el bloque queda anotado para soltar un corazon (ver retirarPremios()).
+     * bloque (ver eliminarDestruidos()).
      */
     public void mover(Direccion dir) {
         boolean cambio = false;
+        List<Block> llegaronAlPremio = new ArrayList<Block>(); // solo se usa dentro de este metodo
 
         boolean vertical = (dir == Direccion.ARRIBA || dir == Direccion.ABAJO);
         int lineas = vertical ? columnas : filas;   // filas o columnas a procesar
@@ -145,7 +132,7 @@ public class BlockGrid {
                 if (i + 1 < lista.size() && lista.get(i + 1).getValor() == b.getValor()) {
                     b.setValor(b.getValor() * 2);
                     if (b.getValor() == VALOR_PREMIO) {
-                        premiosPendientes.add(b);
+                        llegaronAlPremio.add(b);
                     }
                     restantes--;
                     cambio = true;
@@ -167,22 +154,14 @@ public class BlockGrid {
         }
 
         reposicionar();
+        if (oyentePremio != null) {
+            for (Block b : llegaronAlPremio) {
+                oyentePremio.alGenerarPremio(b.getX(), b.getY());
+            }
+        }
         if (cambio) {
             agregarBloqueNuevo();
         }
-    }
-
-    /**
-     * Posiciones (x, y) de los bloques que llegaron a VALOR_PREMIO desde la ultima vez que se
-     * pregunto. Cada una es un premio de vida que debe empezar a caer. La lista se vacia al leerla.
-     */
-    public List<int[]> retirarPremios() {
-        List<int[]> posiciones = new ArrayList<int[]>();
-        for (Block b : premiosPendientes) {
-            posiciones.add(new int[] { b.getX(), b.getY() });
-        }
-        premiosPendientes.clear();
-        return posiciones;
     }
 
     /** Celda numero i de la linea l, contando desde el borde hacia el que se mueve. */
@@ -229,7 +208,7 @@ public class BlockGrid {
             return;
         }
         int[] celda = vacias.get(random.nextInt(vacias.size()));
-        celdas[celda[0]][celda[1]] = crearBloque(celda[0], celda[1]);
+        celdas[celda[0]][celda[1]] = crearBloque(celda[0], celda[1], valorInicial());
         restantes++;
     }
 
@@ -273,8 +252,8 @@ public class BlockGrid {
             for (int c = 0; c < columnas; c++) {
                 Block b = celdas[f][c];
                 if (b != null && !b.isDestroyed() && ball.collidesWith(b)) {
-                    long dx = b.getX() + b.getWidth() / 2 - ball.getX();
-                    long dy = b.getY() + b.getHeight() / 2 - ball.getY();
+                    long dx = b.getX() + b.getWidth() / 2 - ball.getCentroX();
+                    long dy = b.getY() + b.getHeight() / 2 - ball.getCentroY();
                     long distancia = dx * dx + dy * dy;
                     if (distancia < mejorDistancia) {
                         mejorDistancia = distancia;

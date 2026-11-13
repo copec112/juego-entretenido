@@ -16,12 +16,12 @@ import com.mygdx.game.Config;
  * renderizar() es el METODO PLANTILLA: fija el orden de los pasos de cada fotograma
  * y nadie puede cambiarlo (es final):
  *
- *   1. actualizar(delta)       -> logica de la pantalla            (abstracto)
- *   2. limpiar la pantalla     -> color liso                       (gancho, se puede cambiar)
- *   3. dibujarFondo()          -> imagen de fondo                  (gancho, se puede cambiar)
- *   4. dibujarFormas(shape)    -> figuras (rectangulos, pelotas)   (abstracto)
- *   5. dibujarTextos(batch)    -> textos                           (abstracto)
- *   6. procesarEntrada()       -> teclas de la pantalla            (abstracto)
+ *   1. procesarEntrada()       -> leer las teclas de la pantalla   (abstracto)
+ *   2. actualizar(delta)       -> logica de la pantalla            (abstracto)
+ *   3. limpiar la pantalla     -> color liso                       (gancho, se puede cambiar)
+ *   4. dibujarFondo()          -> imagen de fondo                  (gancho, se puede cambiar)
+ *   5. dibujarFormas(shape)    -> figuras (rectangulos, pelotas)   (abstracto)
+ *   6. dibujarTextos(batch)    -> textos                           (abstracto)
  *   7. teclas generales        -> M silencia el sonido             (igual para todas)
  *
  * Cada pantalla concreta (inicio, juego, game over) solo completa los pasos
@@ -43,20 +43,20 @@ public abstract class Pantalla {
 
     public final void renderizar(float delta) {
         tiempo += delta;
-        actualizar(delta);                                  // 1
-        limpiar();                                          // 2
+        procesarEntrada();                                  // 1
+        actualizar(delta);                                  // 2
+        limpiar();                                          // 3
         ctx.prepararVista();
-        dibujarFondo();                                     // 3
+        dibujarFondo();                                     // 4
         Gdx.gl.glEnable(GL20.GL_BLEND);                     // para las transparencias
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         ctx.getShape().begin(ShapeRenderer.ShapeType.Filled);
-        dibujarFormas(ctx.getShape());                      // 4
+        dibujarFormas(ctx.getShape());                      // 5
         ctx.getShape().end();
         ctx.getBatch().begin();
-        dibujarTextos(ctx.getBatch());                      // 5
+        dibujarTextos(ctx.getBatch());                      // 6
         ctx.getBatch().end();
         Gdx.gl.glDisable(GL20.GL_BLEND);
-        procesarEntrada();                                  // 6
         if (Gdx.input.isKeyJustPressed(Input.Keys.M)) {     // 7
             ctx.getAudio().alternarSilencio();
         }
@@ -71,13 +71,14 @@ public abstract class Pantalla {
     //  Pasos que cada pantalla debe completar
     // ------------------------------------------------------------------
 
+    /** Lee las teclas y deja anotado que se pidio; no mueve nada del juego (eso es de actualizar). */
+    protected abstract void procesarEntrada();
+
     protected abstract void actualizar(float delta);
 
     protected abstract void dibujarFormas(ShapeRenderer shape);
 
     protected abstract void dibujarTextos(SpriteBatch batch);
-
-    protected abstract void procesarEntrada();
 
     // ------------------------------------------------------------------
     //  Ganchos: tienen una version por defecto que se puede cambiar

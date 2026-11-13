@@ -1,25 +1,15 @@
 package com.mygdx.game.strategy;
 
 /** Desde los 400 puntos: una pelota mas y un poco mas de velocidad. */
-public class DificultadMedia implements EstrategiaDificultad {
+public class DificultadMedia extends DificultadBase {
 
-    @Override
-    public String getNombre() {
-        return "Media";
+    public DificultadMedia() {
+        super("Media", 400);
     }
 
     @Override
-    public int getPuntajeMinimo() {
-        return 400;
-    }
-
-    @Override
-    public int getPelotas() {
-        return 2;
-    }
-
-    @Override
-    public int getVelocidadExtra() {
-        return 1;
+    public void aplicar(ControlPelotas juego) {
+        asegurarPelotas(juego, 2);
+        juego.fijarVelocidadExtra(1);
     }
 }

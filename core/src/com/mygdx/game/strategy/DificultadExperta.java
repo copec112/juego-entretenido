@@ -1,25 +1,15 @@
 package com.mygdx.game.strategy;
 
 /** Desde los 2048 puntos: entra una cuarta pelota (maximo). */
-public class DificultadExperta implements EstrategiaDificultad {
+public class DificultadExperta extends DificultadBase {
 
-    @Override
-    public String getNombre() {
-        return "Experta";
+    public DificultadExperta() {
+        super("Experta", 2048);
     }
 
     @Override
-    public int getPuntajeMinimo() {
-        return 2048;
-    }
-
-    @Override
-    public int getPelotas() {
-        return 4;
-    }
-
-    @Override
-    public int getVelocidadExtra() {
-        return 1;
+    public void aplicar(ControlPelotas juego) {
+        asegurarPelotas(juego, 4);
+        juego.fijarVelocidadExtra(1);
     }
 }

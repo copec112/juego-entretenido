@@ -1,25 +1,15 @@
 package com.mygdx.game.strategy;
 
 /** Inicio del juego: una sola pelota a velocidad normal. */
-public class DificultadBasica implements EstrategiaDificultad {
+public class DificultadBasica extends DificultadBase {
 
-    @Override
-    public String getNombre() {
-        return "Basica";
+    public DificultadBasica() {
+        super("Basica", 0);
     }
 
     @Override
-    public int getPuntajeMinimo() {
-        return 0;
-    }
-
-    @Override
-    public int getPelotas() {
-        return 1;
-    }
-
-    @Override
-    public int getVelocidadExtra() {
-        return 0;
+    public void aplicar(ControlPelotas juego) {
+        asegurarPelotas(juego, 1);
+        juego.fijarVelocidadExtra(0);
     }
 }

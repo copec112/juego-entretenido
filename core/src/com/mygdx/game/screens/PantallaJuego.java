@@ -8,13 +8,15 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.mygdx.game.Config;
-import com.mygdx.game.builder.LevelBuilder;
+import com.mygdx.game.builder.DirectorNiveles;
 import com.mygdx.game.entities.BlockGrid;
 import com.mygdx.game.entities.Direccion;
+import com.mygdx.game.entities.OyentePremio;
 import com.mygdx.game.entities.Paddle;
 import com.mygdx.game.entities.PingBall;
 import com.mygdx.game.entities.VidaExtra;
 import com.mygdx.game.managers.GameState;
+import com.mygdx.game.strategy.ControlPelotas;
 import com.mygdx.game.strategy.GestorDificultad;
 
 /**
@@ -37,6 +39,41 @@ public class PantallaJuego extends Pantalla {
     private final GestorDificultad dificultad = new GestorDificultad(); // contexto del patron Strategy
     private int velocidadExtra; // velocidad extra actual segun la dificultad
     private final Random random = new Random();
+    private final DirectorNiveles director = new DirectorNiveles(); // patron Builder: sabe armar cada nivel
+
+    // Lo que se pidio con el teclado en este fotograma (lo anota procesarEntrada, lo usa actualizar)
+    private int sentidoPaleta;            // -1 izquierda, 1 derecha, 0 quieta
+    private boolean lanzarPedido;         // ESPACIO apretado
+    private Direccion direccionPedida;    // ultima tecla W/A/S/D recien apretada (null = ninguna)
+
+    /** Cuando una fusion llega a 256, de ese bloque cae un corazon. */
+    private final OyentePremio alGenerarPremio = new OyentePremio() {
+        @Override
+        public void alGenerarPremio(int x, int y) {
+            premios.add(new VidaExtra(x + 23, y));
+        }
+    };
+
+    /** Lo que la dificultad (Strategy) puede pedirle a esta partida. */
+    private final ControlPelotas controlPelotas = new ControlPelotas() {
+        @Override
+        public int cantidadPelotas() {
+            return balls.size();
+        }
+
+        @Override
+        public void agregarPelotaQuieta() {
+            balls.add(nuevaPelota(true));
+        }
+
+        @Override
+        public void fijarVelocidadExtra(int extra) {
+            velocidadExtra = extra;
+            for (PingBall b : balls) {
+                b.setVelocidad(VEL_X_BASE + extra, VEL_Y_BASE + extra);
+            }
+        }
+    };
 
     /** Empieza una partida nueva: puntaje, vidas y nivel en su valor inicial. */
     public PantallaJuego(Contexto ctx) {
@@ -59,20 +96,18 @@ public class PantallaJuego extends Pantalla {
      * libres para poder mover los bloques.
      */
     private void crearBloques() {
-        // patron Builder: LevelBuilder arma la matriz del nivel
-        blocks = new LevelBuilder()
-                .conTamanio(FILAS_GRILLA, COLUMNAS)
-                .paraNivel(estado.getNivel())
-                .build();
+        // patron Builder: el director le pide al LevelBuilder cada paso de la matriz del nivel
+        blocks = director.construirNivel(estado.getNivel(), FILAS_GRILLA, COLUMNAS);
+        blocks.setOyentePremio(alGenerarPremio);
     }
 
     // ------------------------------------------------------------------
-    //  Paso 1 de la plantilla: logica
+    //  Paso 2 de la plantilla: logica
     // ------------------------------------------------------------------
 
     @Override
     protected void actualizar(float delta) {
-        pad.actualizar(); // flechas: mover la paleta
+        pad.mover(sentidoPaleta); // flechas (ya leidas en procesarEntrada)
         // pelotas quietas sobre la paddle: esperan el ESPACIO
         manejarPelotasQuietas();
         for (PingBall b : balls) {
@@ -80,7 +115,7 @@ public class PantallaJuego extends Pantalla {
         }
         // cada pelota que se va por abajo cuesta una vida y vuelve quieta a la paddle (espera el ESPACIO)
         for (int i = 0; i < balls.size(); i++) {
-            if (balls.get(i).getY() < 0) {
+            if (balls.get(i).cayoAlVacio()) {
                 estado.perderVida();
                 ctx.getAudio().sonarVida();
                 balls.set(i, nuevaPelota(true));
@@ -143,17 +178,14 @@ public class PantallaJuego extends Pantalla {
     /** Deja las pelotas que corresponden al puntaje actual, quietas sobre la paddle. */
     private void servirPelotas() {
         dificultad.actualizar(estado.getPuntaje());
-        velocidadExtra = dificultad.getVelocidadExtra();
         balls.clear();
-        for (int i = 0; i < dificultad.getPelotas(); i++) {
-            balls.add(nuevaPelota(true));
-        }
+        dificultad.aplicar(controlPelotas); // la estrategia pone sus pelotas y su velocidad
     }
 
     /** Pelota nueva sobre la paddle, con la velocidad de la dificultad actual. */
     private PingBall nuevaPelota(boolean quieta) {
         int sentido = (quieta || random.nextBoolean()) ? 1 : -1;
-        return new PingBall(pad.getX() + pad.getWidth() / 2 - 5, pad.getY() + pad.getHeight() + 11, PELOTA_RADIO,
+        return new PingBall(pad.getCentroX() - PELOTA_RADIO, pad.getY() + pad.getHeight() + 1, PELOTA_RADIO,
                 sentido * (VEL_X_BASE + velocidadExtra), VEL_Y_BASE + velocidadExtra, quieta);
     }
 
@@ -163,13 +195,12 @@ public class PantallaJuego extends Pantalla {
         for (PingBall b : balls) {
             if (b.estaQuieto()) quietas++;
         }
-        boolean lanzar = Gdx.input.isKeyPressed(Input.Keys.SPACE);
         int k = 0;
         for (PingBall b : balls) {
             if (!b.estaQuieto()) continue;
             int separacion = (int) ((k - (quietas - 1) / 2f) * 30);
-            b.setXY(pad.getX() + pad.getWidth() / 2 - 5 + separacion, pad.getY() + pad.getHeight() + 11);
-            if (lanzar) {
+            b.setXY(pad.getCentroX() - PELOTA_RADIO + separacion, pad.getY() + pad.getHeight() + 1);
+            if (lanzarPedido) {
                 b.setDireccionX(k % 2 == 0 ? 1 : -1); // se reparten hacia los dos lados
                 b.setEstaQuieto(false);
             }
@@ -178,21 +209,13 @@ public class PantallaJuego extends Pantalla {
     }
 
     /**
-     * La dificultad evoluciona sola con el puntaje: el gestor cambia de estrategia, se ajusta
-     * la velocidad de las pelotas y, si hace falta, aparece una pelota nueva sobre la paddle
-     * (queda quieta hasta que se aprieta ESPACIO, igual que al empezar).
+     * La dificultad evoluciona sola con el puntaje: el gestor cambia de estrategia y la nueva
+     * se aplica al juego (velocidad de las pelotas y, si hace falta, una pelota nueva quieta
+     * sobre la paddle, que espera el ESPACIO igual que al empezar).
      */
     private void actualizarDificultad() {
-        dificultad.actualizar(estado.getPuntaje());
-        int extra = dificultad.getVelocidadExtra();
-        if (extra != velocidadExtra) {
-            velocidadExtra = extra;
-            for (PingBall b : balls) {
-                b.setVelocidad(VEL_X_BASE + extra, VEL_Y_BASE + extra);
-            }
-        }
-        while (balls.size() < dificultad.getPelotas()) {
-            balls.add(nuevaPelota(true));
+        if (dificultad.actualizar(estado.getPuntaje())) {
+            dificultad.aplicar(controlPelotas);
         }
     }
 
@@ -209,20 +232,12 @@ public class PantallaJuego extends Pantalla {
      * Solo se puede mover mientras hay una pelota en juego: antes de lanzarla, los bloques no se mueven.
      */
     private void moverBloquesConTeclas() {
-        if (!hayPelotaEnMovimiento()) return;
-        Direccion dir = null;
-        if (Gdx.input.isKeyJustPressed(Input.Keys.W)) dir = Direccion.ARRIBA;
-        else if (Gdx.input.isKeyJustPressed(Input.Keys.S)) dir = Direccion.ABAJO;
-        else if (Gdx.input.isKeyJustPressed(Input.Keys.A)) dir = Direccion.IZQUIERDA;
-        else if (Gdx.input.isKeyJustPressed(Input.Keys.D)) dir = Direccion.DERECHA;
-        if (dir != null) {
-            // fusionar bloques NO da puntos: el puntaje sube solo al romper bloques con la pelota
-            blocks.mover(dir);
-            // si dos bloques se fusionaron hasta 256, de ese bloque cae un corazon
-            for (int[] pos : blocks.retirarPremios()) {
-                premios.add(new VidaExtra(pos[0] + 23, pos[1]));
-            }
-        }
+        Direccion dir = direccionPedida;
+        direccionPedida = null; // la orden se usa una sola vez
+        if (dir == null || !hayPelotaEnMovimiento()) return;
+        // fusionar bloques NO da puntos: el puntaje sube solo al romper bloques con la pelota.
+        // Si dos bloques llegan a 256, la grilla avisa (alGenerarPremio) y cae un corazon.
+        blocks.mover(dir);
     }
 
     // ------------------------------------------------------------------
@@ -261,8 +276,21 @@ public class PantallaJuego extends Pantalla {
         }
     }
 
+    /**
+     * Paso 1 de la plantilla: lee el teclado y anota lo pedido. No mueve nada:
+     * eso lo hace actualizar() con lo que quedo anotado aqui.
+     */
     @Override
     protected void procesarEntrada() {
-        // la entrada de la partida (paleta, ESPACIO y WASD) se procesa en actualizar()
+        sentidoPaleta = 0;
+        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) sentidoPaleta = -1;
+        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) sentidoPaleta = 1;
+        lanzarPedido = Gdx.input.isKeyPressed(Input.Keys.SPACE);
+
+        direccionPedida = null;
+        if (Gdx.input.isKeyJustPressed(Input.Keys.W)) direccionPedida = Direccion.ARRIBA;
+        else if (Gdx.input.isKeyJustPressed(Input.Keys.S)) direccionPedida = Direccion.ABAJO;
+        else if (Gdx.input.isKeyJustPressed(Input.Keys.A)) direccionPedida = Direccion.IZQUIERDA;
+        else if (Gdx.input.isKeyJustPressed(Input.Keys.D)) direccionPedida = Direccion.DERECHA;
     }
 }

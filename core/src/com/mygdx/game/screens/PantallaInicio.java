@@ -14,17 +14,44 @@ import com.mygdx.game.managers.GameState;
 
 /**
  * Pantalla de inicio: titulo, controles y fichas de 2048 que suben flotando de fondo.
- * Completa los pasos de la plantilla (Pantalla). ENTER empieza la partida y
- * ESPACIO abre las reglas y el tutorial.
+ * Completa los pasos de la plantilla (Pantalla). ENTER empieza la partida.
  */
 public class PantallaInicio extends Pantalla {
     private static final int FICHAS = 14;
     private static final int[] VALORES = { 2, 2, 4, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048 };
 
-    /** Ficha decorativa que sube flotando. */
+    /** Ficha decorativa que sube flotando. Todo su estado es privado: la pantalla solo le pide cosas. */
     private static class Ficha {
-        float x, y, velocidad, tam;
-        int valor;
+        private final Random random;
+        private float x, y, velocidad, tam;
+        private int valor;
+
+        Ficha(Random random) {
+            this.random = random;
+            reiniciar(true);
+        }
+
+        /** Vuelve a nacer con otro tamano, posicion, velocidad y valor. porToda: en cualquier altura, o abajo. */
+        void reiniciar(boolean porToda) {
+            tam = 44 + random.nextInt(34);
+            x = random.nextInt(Config.ANCHO - (int) tam);
+            y = porToda ? random.nextInt(Config.ALTO) : -tam;
+            velocidad = 18 + random.nextInt(32);
+            valor = VALORES[random.nextInt(VALORES.length)];
+        }
+
+        /** Sube segun el tiempo transcurrido; al salir por arriba reaparece abajo. */
+        void subir(float delta) {
+            y += velocidad * delta;
+            if (y > Config.ALTO) {
+                reiniciar(false);
+            }
+        }
+
+        float getX() { return x; }
+        float getY() { return y; }
+        float getTam() { return tam; }
+        int getValor() { return valor; }
     }
 
     private final Ficha[] fichas = new Ficha[FICHAS];
@@ -33,17 +60,8 @@ public class PantallaInicio extends Pantalla {
     public PantallaInicio(Contexto ctx) {
         super(ctx);
         for (int i = 0; i < FICHAS; i++) {
-            fichas[i] = new Ficha();
-            reiniciarFicha(fichas[i], true);
+            fichas[i] = new Ficha(random);
         }
-    }
-
-    private void reiniciarFicha(Ficha f, boolean porToda) {
-        f.tam = 44 + random.nextInt(34);
-        f.x = random.nextInt(Config.ANCHO - (int) f.tam);
-        f.y = porToda ? random.nextInt(Config.ALTO) : -f.tam;
-        f.velocidad = 18 + random.nextInt(32);
-        f.valor = VALORES[random.nextInt(VALORES.length)];
     }
 
     @Override
@@ -58,10 +76,7 @@ public class PantallaInicio extends Pantalla {
     @Override
     protected void actualizar(float delta) {
         for (Ficha f : fichas) {
-            f.y += f.velocidad * delta;
-            if (f.y > Config.ALTO) {
-                reiniciarFicha(f, false);
-            }
+            f.subir(delta);
         }
     }
 
@@ -69,9 +84,9 @@ public class PantallaInicio extends Pantalla {
     protected void dibujarFormas(ShapeRenderer shape) {
         // fichas flotando, transparentes para que no tapen el titulo
         for (Ficha f : fichas) {
-            Color c = Block.colorPorValor(f.valor);
+            Color c = Block.colorPorValor(f.getValor());
             shape.setColor(c.r, c.g, c.b, 0.35f);
-            shape.rect(f.x, f.y, f.tam, f.tam);
+            shape.rect(f.getX(), f.getY(), f.getTam(), f.getTam());
         }
         // panel oscuro detras de los controles
         shape.setColor(0f, 0f, 0.1f, 0.6f);
@@ -89,10 +104,10 @@ public class PantallaInicio extends Pantalla {
 
         // numeros de las fichas
         for (Ficha f : fichas) {
-            boolean claro = f.valor <= 8 || f.valor >= 2048;
+            boolean claro = f.getValor() <= 8 || f.getValor() >= 2048;
             float tono = claro ? 0.2f : 1f;
-            textoEnCentro(batch, medio, String.valueOf(f.valor), f.tam / 40f, tono, tono, tono, 0.7f,
-                    f.x + f.tam / 2f, f.y + f.tam / 2f);
+            textoEnCentro(batch, medio, String.valueOf(f.getValor()), f.getTam() / 40f, tono, tono, tono, 0.7f,
+                    f.getX() + f.getTam() / 2f, f.getY() + f.getTam() / 2f);
         }
 
         // titulo

@@ -1,12 +1,11 @@
 package com.mygdx.game.entities;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.mygdx.game.Config;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 
 public class Paddle extends GameObject implements Collidable {
+    private static final int VELOCIDAD = 15; // pixeles por fotograma
 
     public Paddle(int x, int y, int ancho, int alto) {
         super(x, y, ancho, alto);
@@ -18,11 +17,12 @@ public class Paddle extends GameObject implements Collidable {
         ball.rebotarHaciaArriba();
     }
 
-    /** Mueve la paleta con las flechas izquierda y derecha (sin salirse de la pantalla). */
-    public void actualizar() {
-        int x2 = getX();
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) x2 = getX() - 15;
-        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) x2 = getX() + 15;
+    /**
+     * Mueve la paleta hacia donde indica la direccion: -1 izquierda, 1 derecha, 0 se queda.
+     * No se sale de la pantalla. (Quien lee el teclado es la pantalla, no la paleta.)
+     */
+    public void mover(int sentido) {
+        int x2 = getX() + Integer.signum(sentido) * VELOCIDAD;
         if (x2 > 0 && x2 + getWidth() < Config.ANCHO) {
             setX(x2);
         }

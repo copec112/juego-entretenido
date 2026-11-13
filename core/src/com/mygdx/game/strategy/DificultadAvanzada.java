@@ -1,25 +1,15 @@
 package com.mygdx.game.strategy;
 
 /** Desde los 1000 puntos: entra una tercera pelota. */
-public class DificultadAvanzada implements EstrategiaDificultad {
+public class DificultadAvanzada extends DificultadBase {
 
-    @Override
-    public String getNombre() {
-        return "Avanzada";
+    public DificultadAvanzada() {
+        super("Avanzada", 1000);
     }
 
     @Override
-    public int getPuntajeMinimo() {
-        return 1000;
-    }
-
-    @Override
-    public int getPelotas() {
-        return 3;
-    }
-
-    @Override
-    public int getVelocidadExtra() {
-        return 1;
+    public void aplicar(ControlPelotas juego) {
+        asegurarPelotas(juego, 3);
+        juego.fijarVelocidadExtra(1);
     }
 }
